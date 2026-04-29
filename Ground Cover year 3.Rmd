@@ -1,112 +1,90 @@
 ---
-title: "Ground Cover 2025"
+title: "Ground cover — year 3"
 author: "Rachele Quaglino"
-date: "8/17/2025"
+date: "2026-04-29"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
-```{r Load Packages}
+```{r Load packages}
 library(dplyr)
 library(ggplot2)
-library(lme4)
-library(lmerTest)
-library(performance)
-library(emmeans)
 library(tidyr)
 library(readxl)
-library(glmmTMB)   # For beta regression with mixed effects
-library(car)       # For Type III ANOVA
+# TODO: add statistical model (currently descriptive only)
+# library(glmmTMB)   # For beta regression
+# library(lme4)
+# library(emmeans)
 ```
 
-```{r Graph without planted, woody and moss}
-library(readxl)
+```{r Load data}
+# NOTE: FDiv_GroundCover_2025.xlsx is not yet in the repo — add it for reproducibility
+# Data available for 3 sites: FCEA, FAB, LLFS (no GAM)
+ground_cover_CAN <- read_excel("FDiv_GroundCover_2025.xlsx")
+ground_cover_LLFS <- read_excel("FDiv_GroundCover_2025.xlsx", sheet = "LLFS Ground cover 2024")
+ground_cover_AB <- read_excel("FDiv_GroundCover_2025.xlsx", sheet = "AB Ground cover 2025")
 
-ground_cover_CAN <- read_excel("Desktop/Master/3. master thesis/Data/FDiv_GroundCover_2025.xlsx")
+ground_cover_LLFS <- ground_cover_LLFS[, -5]
+ground_cover_CAN <- ground_cover_CAN[, -5]
+ground_cover_AB <- ground_cover_AB[, -5]
 
-ground_cover_LLFS <- read_excel("Desktop/Master/3. master thesis/Data/FDiv_GroundCover_2025.xlsx", 
-                              sheet = "LLFS Ground cover 2024")
-
-ground_cover_AB<- read_excel("Desktop/Master/3. master thesis/Data/FDiv_GroundCover_2025.xlsx", 
-                              sheet = "AB Ground cover 2025")
-#Remove location on transect
-ground_cover_LLFS  <- ground_cover_LLFS [, -5]
-ground_cover_CAN  <- ground_cover_CAN [, -5]
-ground_cover_AB  <- ground_cover_AB [, -5]
-
-#Save all the sites in one dataframe
-ground_cover <- bind_rows(ground_cover_AB,ground_cover_CAN,ground_cover_LLFS)
-ground_cover<- ground_cover %>%
+ground_cover <- bind_rows(ground_cover_AB, ground_cover_CAN, ground_cover_LLFS) %>%
   filter(!is.na(Treatment))
+```
 
-library(dplyr)
-library(tidyr)  # for replace_na
-
+```{r Calculate percentages}
 ground_cover_pct <- ground_cover %>%
-  # Replace NAs with 0 only in numeric columns
-  mutate(across(where(is.numeric), ~ replace_na(.x, 0))) %>% 
-  # Calculate percentages
+  mutate(across(where(is.numeric), ~ replace_na(.x, 0))) %>%
   mutate(
-    Bare_soil_pct = `Bare soil` / (`Total cover` - `Planted tree` - `Natural woody vegetation` - Moss) * 100,
-    Leaf_litter_pct = `Leaf litter` / (`Total cover` - `Planted tree` - `Natural woody vegetation` - Moss) * 100,
-    Forb_pct = Forb / (`Total cover` - `Planted tree` - `Natural woody vegetation` - Moss) * 100,
-    Grass_pct = Grass / (`Total cover` - `Planted tree` - `Natural woody vegetation` - Moss) * 100
+    denom = `Total cover` - `Planted tree` - `Natural woody vegetation` - Moss,
+    Bare_soil_pct = `Bare soil` / denom * 100,
+    Leaf_litter_pct = `Leaf litter` / denom * 100,
+    Forb_pct = Forb / denom * 100,
+    Grass_pct = Grass / denom * 100
   )
 
-# Calculate the average of each ground cover type for each treatment
 ground_cover_avg <- ground_cover_pct %>%
-  # Group by Site and Treatment
   group_by(Site, Treatment) %>%
-  # Summarise to calculate the mean for each ground cover type
   summarise(
     Bare_soil_pct = mean(Bare_soil_pct, na.rm = TRUE),
     Leaf_litter_pct = mean(Leaf_litter_pct, na.rm = TRUE),
     Forb_pct = mean(Forb_pct, na.rm = TRUE),
-    Grass_pct = mean(Grass_pct , na.rm = TRUE),
-    .groups = "drop"  # Ungroup the data after summarizing
+    Grass_pct = mean(Grass_pct, na.rm = TRUE),
+    .groups = "drop"
   ) %>%
-  # Reshape the data to long format for plotting
   pivot_longer(
     cols = c(Bare_soil_pct, Leaf_litter_pct, Forb_pct, Grass_pct),
     names_to = "Cover_Type",
     values_to = "Percentage"
   )
-  
-#Change treatment names like other graphs
-ground_cover_avg$Treatment<-gsub("Sp12", "12SP", ground_cover_avg$Treatment)
-ground_cover_avg$Treatment<-gsub("Sp2", "2SP", ground_cover_avg$Treatment)
-ground_cover_avg$Treatment<-gsub("Sp6", "6SP", ground_cover_avg$Treatment)
-ground_cover_avg$Site<-gsub("CAN", "FCEA", ground_cover_avg$Site)
-ground_cover_avg$Site<-gsub("AB", "FAB", ground_cover_avg$Site)
 
+# Standardize treatment and site names
+ground_cover_avg <- ground_cover_avg %>%
+  mutate(
+    Treatment = gsub("Sp12", "12SP", Treatment),
+    Treatment = gsub("Sp2", "2SP", Treatment),
+    Treatment = gsub("Sp6", "6SP", Treatment),
+    Site = gsub("CAN", "FCEA", Site),
+    Site = gsub("AB", "FAB", Site),
+    Treatment = factor(Treatment, levels = c("C", "M1", "M2", "2SP", "6SP", "12SP"))
+  )
+```
 
-#ordertreatments 
-ground_cover_avg<-ground_cover_avg %>% 
-mutate(Treatment = factor(Treatment, levels = c("C", "M1", "M2", "2SP", "6SP", "12SP")))
-# Create the percent stacked barplot
-
-Ground_cover<-ggplot(ground_cover_avg, aes(x = Treatment, y = Percentage, fill = Cover_Type)) +
+```{r Plot ground cover}
+Ground_cover <- ggplot(ground_cover_avg, aes(x = Treatment, y = Percentage, fill = Cover_Type)) +
   geom_bar(stat = "identity", position = "stack") +
   facet_wrap(~ Site) +
-  scale_fill_manual(values = c( "Bare_soil_pct" = "saddlebrown", 
-                                "Leaf_litter_pct" ="darkgoldenrod2", 
-                                "Forb_pct" = "olivedrab", 
-                                "Grass_pct" = "darkolivegreen1"
-                                ), 
-                    labels = c("Bare_soil_pct" = "Bare Soil", 
-                               "Leaf_litter_pct" ="Leaf Litter", 
-                               "Forb_pct" = "Forb", 
-                               "Grass_pct" = "Grass")) +
-  labs(
-    x = "Treatment",
-    y = "Percentage",
-    fill = "Cover Type"
+  scale_fill_manual(
+    values = c("Bare_soil_pct" = "saddlebrown", "Leaf_litter_pct" = "darkgoldenrod2",
+               "Forb_pct" = "olivedrab", "Grass_pct" = "darkolivegreen1"),
+    labels = c("Bare_soil_pct" = "Bare Soil", "Leaf_litter_pct" = "Leaf Litter",
+               "Forb_pct" = "Forb", "Grass_pct" = "Grass")
   ) +
+  labs(x = "Treatment", y = "Percentage", fill = "Cover Type") +
   theme_minimal()
 
-#save plot
-ggsave("~/Desktop/Ground_cover_2025.jpeg", plot=Ground_cover, width = 8, height = 5, dpi = 300)
+ggsave("Ground_cover_2025.jpeg", plot = Ground_cover, width = 8, height = 5, dpi = 300)
 ```

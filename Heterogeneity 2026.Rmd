@@ -1,176 +1,120 @@
 ---
-title: "Heterogeneity year 3"
+title: "Height Gini coefficient — year 3"
 author: "Rachele Quaglino"
-date: "8/17/2025"
+date: "2026-04-29"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
-```{r Load data}
+```{r Load packages}
 library(readxl)
-TreeData <- read_excel("~/Desktop/Master/3. master thesis/Data/2026/FDiv_PlantedTreeData_final_excel.xlsx", 
-    sheet = "SurvivalGrowth")
-View(TreeData)
-```
-
-```{r Load Packages}
 library(dplyr)
 library(ineq)
 library(lme4)
+library(lmerTest)
 library(ggplot2)
-library(forcats)
-library(DHARMa)
 library(emmeans)
 library(multcomp)
-library(svglite)
+library(DHARMa)
+library(car)
 ```
 
-```{r Gini Coefficient Year 3}
-gini_results_3 <- TreeData %>%  
+```{r Load data}
+TreeData <- read_excel("FDiv_PlantedTreeData_final_excel.xlsx", sheet = "SurvivalGrowth")
+```
+
+```{r Gini coefficient year 3}
+gini_results_3 <- TreeData %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarize(
-    Gini_Coefficient_year_3 = ineq(Height_year_3[!is.na(Height_year_3)], type = "Gini"))
+    Gini_Coefficient_year_3 = ineq(Height_year_3[!is.na(Height_year_3)], type = "Gini"),
+    .groups = "drop"
+  )
 
-# Reorder treatments
-gini_results_3$Treatment<- factor(gini_results_3$Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP")) 
+gini_results_3$Treatment <- factor(gini_results_3$Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP"))
 
-# Create a summary of means and std of the gini coeffcients per site per treatment for bar plot
 gini_summary_3 <- gini_results_3 %>%
   group_by(Site, Treatment) %>%
-  summarize(mean_gini = mean(Gini_Coefficient_year_3, na.rm = TRUE),
-            sd_gini = sd(Gini_Coefficient_year_3, na.rm = TRUE),
+  summarize(
+    mean_gini = mean(Gini_Coefficient_year_3, na.rm = TRUE),
+    sd_gini = sd(Gini_Coefficient_year_3, na.rm = TRUE),
+    .groups = "drop"
   )
-
 ```
 
-```{r Model gini}
-library(lme4)
+```{r Model Gini — by site}
+# Site as fixed effect (4 levels), block (Plot_number) nested within Site as random
+gini_model_3 <- lmer(
+  Gini_Coefficient_year_3 ~ Treatment * Site + (1 | Site:Plot_number),
+  data = gini_results_3
+)
 
-# Fit the linear mixed-effects model
-gini_model_3 <- lmer(Gini_Coefficient_year_3 ~ Treatment * Site + (1 | Site), data = gini_results_3)
-plot(gini_model_3)
 summary(gini_model_3)
 Anova(gini_model_3, type = 3)
-# Check model fit by plotting residuals
+anova(gini_model_3)
+
 simulationOutput3 <- simulateResiduals(fittedModel = gini_model_3, plot = TRUE)
-plot(simulationOutput3)
-# Extra diagnostic tests
-testDispersion(simulationOutput3)     # Over dispersion check
-testZeroInflation(simulationOutput3)  # Zero-inflation check
-library(emmeans)
-library(multcomp)
+testDispersion(simulationOutput3)
+testZeroInflation(simulationOutput3)
 
-#calculate significant differences
-anova(gini_model_3, type = "III")
-#extract model means
-
-# Get both emmeans and pairwise comparisons
-means_gini_3 <- emmeans(gini_model_3, pairwise ~ Treatment | Site,
-                        type = "response", data = gini_results_3)
-
-# Apply cld() ONLY to the emmeans part
-cld_sign_gini_3 <- cld(means_gini_3$emmeans,
-                       Letters = letters,
-                       adjust = "tukey",
-                       alpha = 0.05,
-                       decreasing = TRUE)
-
-# If you want a data frame:
-cld_sign_gini_3 <- as.data.frame(cld_sign_gini_3)
-
-
-
-ginibar3<-ggplot(gini_summary_3, aes(x = Treatment, y = mean_gini, fill=Treatment)) +
-  geom_bar(stat = "identity") +
-  geom_jitter(data = gini_results_3, 
-              aes(x = Treatment, y = Gini_Coefficient_year_3), 
-              width = 0.2,  # Horizontal scatter
-              size = 1.5,  # Point size
-              alpha = 0.5, # Transparency
-              color = "black") + # Point color
-   geom_errorbar(aes(ymin = mean_gini - sd_gini, ymax = mean_gini +                sd_gini), width = 0.2,    # Width of horizontal caps
-               linetype = "dashed", # Dashed whisker lines
-               size = 0.5) +
-  geom_text(data = cld_sign_gini_3, family= "sans", show.legend = FALSE,
-            check_overlap = FALSE, size = 3, vjust = 1,
-            aes(x=Treatment,y=Inf,label=.group ))+
-  scale_fill_manual(values = c( "12SP" = "darkolivegreen",
-                               "2SP" = "darkseagreen2", 
-                               "6SP" = "darkseagreen", 
-                               "M1" = "firebrick", 
-                               "M2"= "coral"), guide = "none") +
-  facet_wrap(~ Site) +  # Creates a separate panel for each site
-  labs(
-       x = "Treatment",
-       y = "Mean Gini Coefficient of Height") +
-  theme(legend.position = "none") +
-  theme_classic()
-
-#print plot
-ginibar3
-#save plot
-ggsave("~/Desktop/gini_barplot_year_3.jpeg", plot=ginibar3, width = 8, height = 7, dpi = 1200)
-ggsave("~/Desktop/gini_barplot_year_3.svg", plot=ginibar3)
+# Pairwise comparisons by site
+means_gini_3 <- emmeans(gini_model_3, pairwise ~ Treatment | Site, type = "response")
+cld_sign_gini_3 <- as.data.frame(cld(means_gini_3$emmeans, Letters = letters,
+                                      adjust = "tukey", alpha = 0.05, decreasing = TRUE))
 ```
-```{r Model gini - sites pooled together}
-gini_summary_3_pooled <- gini_results_3 %>%
-  group_by(Treatment) %>%
-  summarize(mean_gini = mean(Gini_Coefficient_year_3, na.rm = TRUE),
-            sd_gini = sd(Gini_Coefficient_year_3, na.rm = TRUE),
-  )
 
-# Get both emmeans and pairwise comparisons
-means_gini_3_pooled <- emmeans(gini_model_3, pairwise ~ Treatment,
-                        type = "response", data = gini_results_3)
-
-# Apply cld() ONLY to the emmeans part
-cld_sign_gini_3_pooled <- cld(means_gini_3_pooled$emmeans,
-                       Letters = letters,
-                       adjust = "tukey",
-                       alpha = 0.05,
-                       decreasing = TRUE)
-
-# If you want a data frame:
-cld_sign_gini_3_pooled <- as.data.frame(cld_sign_gini_3_pooled)
-
-
-
-ginibar3_pooled <- ggplot(gini_summary_3_pooled,
-                          aes(x = Treatment, y = mean_gini, fill = Treatment)) +
+```{r Plot Gini — by site}
+ginibar3 <- ggplot(gini_summary_3, aes(x = Treatment, y = mean_gini, fill = Treatment)) +
   geom_bar(stat = "identity") +
   geom_jitter(data = gini_results_3,
               aes(x = Treatment, y = Gini_Coefficient_year_3),
-              width = 0.2,
-              size = 1.5,
-              alpha = 0.5,
-              color = "black") +
-  geom_errorbar(aes(ymin = mean_gini - sd_gini,
-                    ymax = mean_gini + sd_gini),
-                width = 0.2,
-                linetype = "dashed",
-                size = 0.5) +
+              width = 0.2, size = 1.5, alpha = 0.5, color = "black") +
+  geom_errorbar(aes(ymin = mean_gini - sd_gini, ymax = mean_gini + sd_gini),
+                width = 0.2, linetype = "dashed", linewidth = 0.5) +
+  geom_text(data = cld_sign_gini_3, family = "sans", show.legend = FALSE,
+            check_overlap = FALSE, size = 3, vjust = 1,
+            aes(x = Treatment, y = Inf, label = .group)) +
+  scale_fill_manual(values = c("12SP" = "darkolivegreen", "2SP" = "darkseagreen2",
+                               "6SP" = "darkseagreen", "M1" = "firebrick",
+                               "M2" = "coral"), guide = "none") +
+  facet_wrap(~ Site) +
+  labs(x = "Treatment", y = "Mean Gini Coefficient of Height") +
+  theme_classic()
+
+ggsave("gini_barplot_year_3.jpeg", plot = ginibar3, width = 8, height = 7, dpi = 300)
+```
+
+```{r Model Gini — pooled}
+gini_summary_3_pooled <- gini_results_3 %>%
+  group_by(Treatment) %>%
+  summarize(
+    mean_gini = mean(Gini_Coefficient_year_3, na.rm = TRUE),
+    sd_gini = sd(Gini_Coefficient_year_3, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+means_gini_3_pooled <- emmeans(gini_model_3, pairwise ~ Treatment, type = "response")
+cld_sign_gini_3_pooled <- as.data.frame(cld(means_gini_3_pooled$emmeans, Letters = letters,
+                                             adjust = "tukey", alpha = 0.05, decreasing = TRUE))
+
+ginibar3_pooled <- ggplot(gini_summary_3_pooled, aes(x = Treatment, y = mean_gini, fill = Treatment)) +
+  geom_bar(stat = "identity") +
+  geom_jitter(data = gini_results_3,
+              aes(x = Treatment, y = Gini_Coefficient_year_3),
+              width = 0.2, size = 1.5, alpha = 0.5, color = "black") +
+  geom_errorbar(aes(ymin = mean_gini - sd_gini, ymax = mean_gini + sd_gini),
+                width = 0.2, linetype = "dashed", linewidth = 0.5) +
   geom_text(data = cld_sign_gini_3_pooled,
             aes(x = Treatment, y = Inf, label = .group),
-            vjust = 1,
-            size = 3) +
-  scale_fill_manual(values = c(
-    "12SP" = "darkolivegreen",
-    "2SP" = "darkseagreen2",
-    "6SP" = "darkseagreen",
-    "M1" = "firebrick",
-    "M2" = "coral"),
-    guide = "none") +
-  theme_classic() +
-  labs(
-    x = "Treatment",
-    y = "Mean Gini Coefficient of Height"
-  )
-#print plot
-ginibar3_pooled
-#save jpeg
-ggsave("~/Desktop/gini_barplot_pooled.jpeg", plot=ginibar3_pooled, width = 8, height = 6, dpi = 1200)
-ggsave("~/Desktop/gini_barplot_pooled.svg", plot=ginibar3_pooled)
+            vjust = 1, size = 3) +
+  scale_fill_manual(values = c("12SP" = "darkolivegreen", "2SP" = "darkseagreen2",
+                               "6SP" = "darkseagreen", "M1" = "firebrick",
+                               "M2" = "coral"), guide = "none") +
+  labs(x = "Treatment", y = "Mean Gini Coefficient of Height") +
+  theme_classic()
+
+ggsave("gini_barplot_pooled.jpeg", plot = ginibar3_pooled, width = 8, height = 6, dpi = 300)
 ```

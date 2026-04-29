@@ -1,521 +1,194 @@
 ---
-title: "Species performances across treatments"
+title: "Species performance across treatments — year 3"
 author: "Rachele Quaglino"
-date: "1/8/2025"
+date: "2026-04-29"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-```{r Load Data}
-library(readr)
-TreeDataGrowth <- read_delim("~/Desktop/Master/3. master thesis/CSVs/Height and BA all sites with mortality.csv", 
-    delim = ";", escape_double = FALSE, trim_ws = TRUE)
-
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
 ```{r Load packages}
+library(readxl)
 library(dplyr)
 library(ggplot2)
 library(lme4)
 library(lmerTest)
-library(performance)
 library(emmeans)
-library(tidyr)
+library(multcomp)
 library(RColorBrewer)
+library(car)
 ```
 
-```{r Total BA per plot}
-# Summing BA within each plot
-plot_level_BA <- TreeDataGrowth %>%
-  group_by(Site, Treatment, Plot_number) %>%
-  summarise(
-    Total_BA_2024 = sum(BA_2024, na.rm = TRUE), # Sum BA for each plot
-    Total_BA_2023 =  sum(BA_2023, na.rm = TRUE),
-    .groups = "drop"
-  )
+```{r Load data}
+TreeData <- read_excel("FDiv_PlantedTreeData_final_excel.xlsx", sheet = "SurvivalGrowth")
 
-# Calculating average plot-level BA per treatment
-avg_plot_BA <- plot_level_BA %>%
+TreeData <- TreeData %>%
+  mutate(
+    Height_year_2 = as.numeric(Height_year_2),
+    Height_year_3 = as.numeric(Height_year_3),
+    BA_year_2 = as.numeric(BA_year_2),
+    BA_year_3 = as.numeric(BA_year_3)
+  )
+```
+
+```{r Plot-level total BA — year 3}
+ba_plot <- TreeData %>%
+  filter(!is.na(BA_year_3)) %>%
+  group_by(Site, Treatment, Plot_number) %>%
+  summarise(Total_BA = sum(BA_year_3, na.rm = TRUE), .groups = "drop")
+
+ba_plot$Treatment <- factor(ba_plot$Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP"))
+
+avg_plot_BA <- ba_plot %>%
   group_by(Site, Treatment) %>%
   summarise(
-    Avg_BA_2024 = mean(Total_BA_2024, na.rm = TRUE), # Average total BA per treatment
-    SD_BA_2024 = sd(Total_BA_2024, na.rm = TRUE),   # Standard deviation for error bars
-    Avg_BA_2023 = mean(Total_BA_2023, na.rm = TRUE), 
-    SD_BA_2023 = sd(Total_BA_2023, na.rm = TRUE),   
+    Avg_BA = mean(Total_BA, na.rm = TRUE),
+    SD_BA = sd(Total_BA, na.rm = TRUE),
     .groups = "drop"
   )
-
-avg_plot_BA <- avg_plot_BA %>%
-  mutate(Treatment = factor(Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP")))
-
-
-#plot 2023
-ggplot(avg_plot_BA, aes(x = Treatment, y = Avg_BA_2023, fill = Treatment)) +
-  geom_bar(stat = "identity", color = "black") +
-  geom_errorbar(aes(ymin = Avg_BA_2023 - SD_BA_2023, ymax = Avg_BA_2023 + SD_BA_2023), 
-                width = 0.2, color = "black") +
-  geom_jitter(data = plot_level_BA, aes(x = Treatment, y = Total_BA_2023), 
-              color = "black", alpha = 0.5, width = 0.1) + # Add individual plot points
-  theme_minimal() +
-  facet_wrap(~Site)+
-  scale_fill_manual(values = c( "12SP" = "darkolivegreen",
-                               "2SP" = "darkseagreen2", 
-                               "6SP" = "darkseagreen", 
-                               "M1" = "firebrick", 
-                               "M2"= "coral")) +
-  labs(
-    title = "Average Plot-Level Basal Area per Treatment, 2023",
-    x = "Treatment",
-    y = "Average Basal Area"
-  ) 
-  
-
-#plot 2024
-ggplot(avg_plot_BA, aes(x = Treatment, y = Avg_BA_2024, fill = Treatment)) +
-  geom_bar(stat = "identity", color = "black") +
-  geom_errorbar(aes(ymin = Avg_BA_2024 - SD_BA_2024, ymax = Avg_BA_2024 + SD_BA_2024), 
-                width = 0.2, color = "black") +
-  geom_jitter(data = plot_level_BA, aes(x = Treatment, y = Total_BA_2024), 
-              color = "black", alpha = 0.5, width = 0.1) + # Add individual plot points
-  theme_minimal() +
-  scale_fill_manual(values = c( "12SP" = "darkolivegreen",
-                               "2SP" = "darkseagreen2", 
-                               "6SP" = "darkseagreen", 
-                               "M1" = "firebrick", 
-                               "M2"= "coral")) +
-  facet_wrap(~Site)+
-  labs(
-    title = "Average Plot-Level Basal Area per Treatment, 2024",
-    x = "Treatment",
-    y = "Average Basal Area"
-  ) 
-
-#plot after 2 years: llfs 2023 and ab and can 2024
-LLFS_stats <- avg_plot_BA %>% 
-  filter(Site == "LLFS") %>% 
-  select(Site, Treatment, Avg_BA_2023, SD_BA_2023) %>% 
-  rename(Avg_BA_2_years = Avg_BA_2023) %>% 
-  rename(SD_BA_2_years = SD_BA_2023)
-
-CAN_stats <- avg_plot_BA %>% 
-  filter(Site == "Cantaros") %>% 
-  select(Site, Treatment, Avg_BA_2024, SD_BA_2024) %>% 
-  rename(Avg_BA_2_years = Avg_BA_2024) %>% 
-  rename(SD_BA_2_years = SD_BA_2024)
-
-AB_stats <- avg_plot_BA %>% 
-  filter(Site == "AguasBuenas") %>% 
-  select(Site, Treatment, Avg_BA_2024, SD_BA_2024) %>% 
-  rename(Avg_BA_2_years = Avg_BA_2024) %>% 
-  rename(SD_BA_2_years = SD_BA_2024)
-
-avg_plot_BA_2_years <- bind_rows(LLFS_stats,CAN_stats,AB_stats)
-#jitter points
-LLFS_jitter <- plot_level_BA %>% 
-  filter(Site == "LLFS") %>% 
-  select(Site, Treatment, Plot_number, Total_BA_2023) %>% 
-  rename(BA_2_years = Total_BA_2023) 
-CAN_jitter <- plot_level_BA %>% 
-  filter(Site == "Cantaros") %>% 
-  select(Site, Treatment, Plot_number, Total_BA_2024) %>% 
-  rename(BA_2_years = Total_BA_2024) 
-AB_jitter <- plot_level_BA %>% 
-  filter(Site == "AguasBuenas") %>% 
-  select(Site, Treatment, Plot_number, Total_BA_2024) %>% 
-  rename(BA_2_years = Total_BA_2024) 
-Total_BA_2_years <- bind_rows(LLFS_jitter,CAN_jitter,AB_jitter)
-
-#finally plot
-ggplot(avg_plot_BA_2_years, aes(x = Treatment, y = Avg_BA_2_years, fill = Treatment)) +
-  geom_bar(stat = "identity", color = "black") +
-  geom_errorbar(aes(ymin = Avg_BA_2_years - SD_BA_2_years, ymax = Avg_BA_2_years +                 SD_BA_2_years), 
-                width = 0.2, color = "black") +
-  geom_jitter(data = Total_BA_2_years, aes(x = Treatment, y = BA_2_years), 
-              color = "black", alpha = 0.5, width = 0.1) + # Add individual plot points
-  theme_minimal() +
-  scale_fill_manual(values = c( "12SP" = "darkolivegreen",
-                               "2SP" = "darkseagreen2", 
-                               "6SP" = "darkseagreen", 
-                               "M1" = "firebrick", 
-                               "M2"= "coral")) +
-  facet_wrap(~Site)+
-  theme(legend.position = "none")+
-  labs(
-    title = "Average Plot-Level Basal Area after 2 Years",
-    x = "Treatment",
-    y = "Average Basal Area"
-  ) 
-
-###Significance letters
-
-#fit model
-model_plot_ba <- lmer(
-  BA_2_years ~ Treatment * Site + (1|Plot_number),
-  data = Total_BA_2_years
-) 
-summary(model_plot_ba)
-
-#Anova type III to check significance of fixed effects in the model
-Anova(model_plot_ba)
-
-#extract model means
-means_plot_ba <- emmeans (model_plot_ba, pairwise ~ Treatment | Site , type = "response", data = Total_BA_2_years)
-
-#calculate significant differences
-library(multcomp)
-cld_sign_plot_ba <- as.data.frame(cld(means_plot_ba, Letters = letters, adjust = "BH", alpha = 0.05, decreasing = TRUE))
-
-#change the order of factors
-cld_sign_plot_ba$Treatment <- factor(cld_sign_plot_ba$Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP"))
-
-ggplot(avg_plot_BA_2_years, aes(x = Treatment, y = Avg_BA_2_years, fill = Treatment)) +
-  geom_bar(stat = "identity", color = "black") +
-  geom_errorbar(aes(ymin = Avg_BA_2_years - SD_BA_2_years, ymax = Avg_BA_2_years +                 SD_BA_2_years), 
-                width = 0.2, linewidth = 0.3, color = "black") +
-  geom_jitter(data = Total_BA_2_years, aes(x = Treatment, y = BA_2_years), 
-              color = "black", alpha = 0.5, width = 0.1) + # Add individual plot points
-  geom_text(data = cld_sign_plot_ba, family= "sans", show.legend = FALSE, check_overlap = FALSE, 
-            size = 3, vjust = 1, aes(x=Treatment,y=Inf,label=.group))+
-  theme_minimal() +
-  scale_fill_manual(values = c( "12SP" = "darkolivegreen",
-                               "2SP" = "darkseagreen2", 
-                               "6SP" = "darkseagreen", 
-                               "M1" = "firebrick", 
-                               "M2"= "coral")) +
-  facet_wrap(~Site)+
-  theme(legend.position = "none")+
-  labs(
-    title = "Average Plot-Level Basal Area after 2 Years",
-    x = "Treatment",
-    y = "Average Basal Area"
-  ) 
 ```
 
-```{r Prep data}
-# Ensure numeric variables are formatted as numeric
-TreeDataGrowth <- TreeDataGrowth %>%
-  mutate(
-    Height_2023 = as.numeric(Height_2023),
-    Height_2024 = as.numeric(Height_2024),
-    BA_2023 = as.numeric(BA_2023),
-    BA_2024 = as.numeric(BA_2024)
-  )
+```{r Model total BA}
+model_ba <- lmer(Total_BA ~ Treatment * Site + (1 | Site:Plot_number), data = ba_plot)
+summary(model_ba)
+anova(model_ba)
 
-# Check for missing values
-summary(TreeDataGrowth)
+means_ba <- emmeans(model_ba, pairwise ~ Treatment | Site, type = "response")
+cld_ba <- as.data.frame(cld(means_ba$emmeans, Letters = letters, adjust = "tukey", alpha = 0.05, decreasing = TRUE))
 
-# Replace 0s with a small positive value (1e-6) in the specified columns, for the logarithmic operations that will follow
-TreeDataGrowth <- TreeDataGrowth %>%
-  mutate(
-    Height_2023 = ifelse(Height_2023 == 0, 1e-6, Height_2023),
-    Height_2024 = ifelse(Height_2024 == 0, 1e-6, Height_2024),
-    BA_2023 = ifelse(BA_2023 == 0, 1e-6, BA_2023),
-    BA_2024 = ifelse(BA_2024 == 0, 1e-6, BA_2024)
-  )
-
-# Remove rows with NA in Height_2 BA_2024 (they were excluded from sampling to simplify the process)
-TreeDataGrowth <- TreeDataGrowth %>%
-  filter(!is.na(Height_2024) & !is.na(BA_2024))
-
-# Replace NAs left in Height_2023 and BA_2023 with the small positive value (1e-6), since they were recorded as NAs but meant as 0s
-TreeDataGrowth <- TreeDataGrowth %>%
-  mutate(
-    Height_2023 = ifelse(is.na(Height_2023), 1e-6, Height_2023),
-    BA_2023 = ifelse(is.na(BA_2023), 1e-6, BA_2023)
-  )
-
-# Check that there are no NAs left in these 4 relevant variables
-summary(TreeDataGrowth)
-
-
-
+means_ba_pooled <- emmeans(model_ba, pairwise ~ Treatment, type = "response")
+cld_ba_pooled <- as.data.frame(cld(means_ba_pooled$emmeans, Letters = letters, adjust = "tukey", alpha = 0.05, decreasing = TRUE))
 ```
 
+```{r Plot total BA — by site}
+ggplot(avg_plot_BA, aes(x = Treatment, y = Avg_BA, fill = Treatment)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = pmax(Avg_BA - SD_BA, 0), ymax = Avg_BA + SD_BA),
+                width = 0.2, linewidth = 0.3) +
+  geom_jitter(data = ba_plot, aes(x = Treatment, y = Total_BA),
+              color = "black", alpha = 0.5, width = 0.1) +
+  geom_text(data = cld_ba, family = "sans", show.legend = FALSE,
+            check_overlap = FALSE, size = 3, vjust = 1,
+            aes(x = Treatment, y = Inf, label = .group)) +
+  scale_fill_manual(values = c("12SP" = "darkolivegreen", "2SP" = "darkseagreen2",
+                               "6SP" = "darkseagreen", "M1" = "firebrick",
+                               "M2" = "coral"), guide = "none") +
+  facet_wrap(~ Site) +
+  labs(x = "Treatment", y = expression("Total Basal Area (" * cm^2 * ")")) +
+  theme_classic()
 
-
-```{r Calculate RGR}
-# Add the RGR for Height to TreeDataGrowth 
-TreeDataGrowthHeight <- TreeDataGrowth %>%
-  filter(Height_2023!=1e-6)%>%
-  mutate(
-    RGR_Height = (log(Height_2024) - log(Height_2023)) / 365,
-  )
-
-# Add the RGR for BA to TreeDataGrowthBA, but first remove all the rows where BA_2023 == 0
-TreeDataGrowthBA <- TreeDataGrowth %>%
-  filter(BA_2023!=1e-6 ) %>%  
-  mutate(
-    RGR_BA = (log(BA_2024) - log(BA_2023)) / 365
-  )
-
-#There are negative RGRs so filter them out
-TreeDataGrowthHeight <- TreeDataGrowthHeight %>% 
-  filter(RGR_Height > 0)
-TreeDataGrowthBA <- TreeDataGrowthBA %>% 
-  filter(RGR_BA > 0)
+ggsave("total_BA_year3.jpeg", width = 8, height = 6, dpi = 300)
 ```
 
-```{r Subset databases for species present in monocultures}
-#make a table with the monoculture species, treatment and site
-MonocultureSpecies <- TreeDataGrowth %>%
-  filter(Treatment %in% c("M1")) %>%
-  dplyr::select(Site, Treatment, Species) %>% 
+```{r Plot-level mean height — year 3}
+ht_plot <- TreeData %>%
+  filter(!is.na(Height_year_3)) %>%
+  group_by(Site, Treatment, Plot_number) %>%
+  summarise(mean_ht = mean(Height_year_3, na.rm = TRUE), .groups = "drop")
+
+ht_plot$Treatment <- factor(ht_plot$Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP"))
+
+model_ht <- lmer(mean_ht ~ Treatment * Site + (1 | Site:Plot_number), data = ht_plot)
+summary(model_ht)
+anova(model_ht)
+```
+
+```{r Identify monoculture species}
+MonocultureSpecies <- TreeData %>%
+  filter(Treatment == "M1") %>%
+  select(Site, Species) %>%
   distinct()
-
-TreeDataSubsetHeight <- TreeDataGrowthHeight %>%
-  semi_join(MonocultureSpecies, by = "Species")
-
-TreeDataSubsetBA <- TreeDataGrowthBA %>%
-  semi_join(MonocultureSpecies, by = "Species")
 ```
 
-```{r Summary statistics (mean)}
-SubsetSummaryHeight <- TreeDataSubsetHeight %>%
-  group_by(Site, Treatment, Species) %>%
-  summarise(
-    Mean_Height_2023 = mean(Height_2023, na.rm = TRUE),
-    Mean_BA_2024 = mean(BA_2024, na.rm = TRUE), #keep BA_2024 in case you want to plot with this dataset that has more values for BA_2024 cause didn't remove all that had BA_2023 == 0 
-    Mean_Height_2024 = mean(Height_2024, na.rm = TRUE),
-    Mean_RGR_Height = mean(RGR_Height, na.rm = TRUE),
-    .groups = "drop"
-  ) %>% 
-  mutate(Treatment = factor(Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP"))
-    ) #reorder dataset for nicer plotting
-#Calculate the mean per plot
-SubsetSummaryBA <- TreeDataSubsetBA %>%
-  group_by(Site, Treatment, Plot_number, Species) %>%
-  summarise(
-    Mean_BA_2023 = mean(BA_2023, na.rm = TRUE),
-    sd_BA_2023 = sd(BA_2023,na.rm = TRUE),
-    Mean_BA_2024 = mean(BA_2024, na.rm = TRUE),
-    sd_BA_2024 = sd(BA_2024,na.rm = TRUE),
-    Mean_RGR_BA = mean(RGR_BA, na.rm = TRUE),
-    sd_RGR_BA = sd(RGR_BA,na.rm = TRUE),
-    .groups = "drop"
-  ) %>% 
+```{r Calculate RGR — exclude sites without year 2 data}
+# GAM has no year 2 data, so RGR can only be computed for FAB, FCEA, LLFS
+TreeData_RGR <- TreeData %>%
+  filter(!is.na(Height_year_2), !is.na(Height_year_3),
+         !is.na(BA_year_2), !is.na(BA_year_3),
+         Height_year_2 > 0, Height_year_3 > 0,
+         BA_year_2 > 0, BA_year_3 > 0)
+
+TreeData_RGR <- TreeData_RGR %>%
   mutate(
-    Treatment = factor(Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP"))
-  )#reorder dataset for nicer plotting
-#Treatment average
-SubsetSummaryBA <- SubsetSummaryBA %>%
-  group_by(Site, Treatment, Species) %>%
+    RGR_Height = (log(Height_year_3) - log(Height_year_2)) / 365,
+    RGR_BA = (log(BA_year_3) - log(BA_year_2)) / 365
+  )
+```
+
+```{r Inga edulis performance across treatments}
+# Subset to Inga edulis (present in M1 at all sites)
+Inga_data <- TreeData %>%
+  filter(Species == "Inga edulis", !is.na(Height_year_3), !is.na(BA_year_3))
+
+Inga_data$Treatment <- factor(Inga_data$Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP"))
+
+# Individual-level BA
+cat("=== Inga edulis individual BA ===\n")
+model_inga_ba <- lmer(BA_year_3 ~ Treatment * Site + (1 | Site:Plot_number), data = Inga_data)
+anova(model_inga_ba)
+
+# Individual-level height
+cat("=== Inga edulis individual height ===\n")
+model_inga_ht <- lmer(Height_year_3 ~ Treatment * Site + (1 | Site:Plot_number), data = Inga_data)
+anova(model_inga_ht)
+
+# RGR height (only sites with year 2 data)
+Inga_RGR <- TreeData_RGR %>%
+  filter(Species == "Inga edulis")
+Inga_RGR$Treatment <- factor(Inga_RGR$Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP"))
+
+if (nrow(Inga_RGR) > 0) {
+  cat("=== Inga edulis RGR height ===\n")
+  model_inga_rgr <- lmer(RGR_Height ~ Treatment * Site + (1 | Site:Plot_number), data = Inga_RGR)
+  anova(model_inga_rgr)
+}
+```
+
+```{r Inga vs other species summary}
+# Separate Inga from other species for comparison plots
+Inga_summary <- TreeData %>%
+  filter(!is.na(BA_year_3), !is.na(Height_year_3)) %>%
+  mutate(Species_group = ifelse(Species == "Inga edulis", "Inga edulis", "Other species")) %>%
+  group_by(Treatment, Species_group) %>%
   summarise(
-   Mean_BA_2023 =mean(Mean_BA_2023, na.rm = TRUE),
-    sd_BA_2023 = mean(sd_BA_2023,na.rm = TRUE),
-    Mean_BA_2024 = mean(Mean_BA_2024, na.rm = TRUE),
-    sd_BA_2024 = mean(sd_BA_2024,na.rm = TRUE),
-    Mean_RGR_BA = mean(Mean_RGR_BA, na.rm = TRUE),
-    sd_RGR_BA = mean(sd_RGR_BA,na.rm = TRUE),
+    mean_BA = mean(BA_year_3, na.rm = TRUE),
+    sd_BA = sd(BA_year_3, na.rm = TRUE),
+    mean_Height = mean(Height_year_3, na.rm = TRUE),
+    sd_Height = sd(Height_year_3, na.rm = TRUE),
+    n = n(),
     .groups = "drop"
-  ) 
+  )
 
+Inga_summary$Treatment <- factor(Inga_summary$Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP"))
+print(Inga_summary)
 ```
 
-```{r Plot mean BA 2023}
-library(RColorBrewer)
-ggplot(SubsetSummaryBA, aes(x = Treatment, y = Mean_BA_2023, color = Species, group = Species)) +
+```{r Plot Inga vs other species — BA}
+ggplot(Inga_summary, aes(x = Treatment, y = mean_BA, color = Species_group, group = Species_group)) +
   geom_point(size = 6, alpha = 0.6) +
-  geom_line(size = 1, alpha = 0.75)+
-  scale_color_brewer(palette = "Dark2")+
-  facet_wrap(~Site) +
+  geom_line(linewidth = 1, alpha = 0.75) +
+  geom_errorbar(aes(ymin = pmax(mean_BA - sd_BA, 0), ymax = mean_BA + sd_BA),
+                width = 0.15, linewidth = 0.4) +
+  scale_color_manual(values = c("Inga edulis" = "darkorange", "Other species" = "darkgreen")) +
+  labs(x = "Treatment", y = expression("Mean Individual BA (" * cm^2 * ")"), color = "") +
   theme_minimal() +
-  labs(
-    title = "Mean basal area (2023) of monoculture species across treatments",
-    x = "Treatment",
-    y = "Mean Basal Area (cm2)"
-  )
+  theme(axis.title = element_text(size = 14))
 
+ggsave("inga_vs_others_BA.jpeg", width = 6, height = 5, dpi = 300)
 ```
 
-```{r Plot mean BA 2024}
-ggplot(SubsetSummaryBA, aes(x = Treatment, y = Mean_BA_2024, color = Species, group=Species)) +
+```{r Plot Inga vs other species — Height}
+ggplot(Inga_summary, aes(x = Treatment, y = mean_Height, color = Species_group, group = Species_group)) +
   geom_point(size = 6, alpha = 0.6) +
-  geom_line(size = 1, alpha = 0.75)+
-  scale_color_brewer(palette = "Dark2")+
-  facet_wrap(~Site) +
+  geom_line(linewidth = 1, alpha = 0.75) +
+  geom_errorbar(aes(ymin = pmax(mean_Height - sd_Height, 0), ymax = mean_Height + sd_Height),
+                width = 0.15, linewidth = 0.4) +
+  scale_color_manual(values = c("Inga edulis" = "darkorange", "Other species" = "darkgreen")) +
+  labs(x = "Treatment", y = "Mean Individual Height (cm)", color = "") +
   theme_minimal() +
-  labs(
-    title = "Mean basal area (2024) of monoculture species across treatments",
-    x = "Treatment",
-    y = "Mean Basal Area (cm2)"
-  )
+  theme(axis.title = element_text(size = 14))
 
-```
-
-```{r Plot mean Height 2023}
-ggplot(SubsetSummaryHeight, aes(x = Treatment, y = Mean_Height_2023, color = Species, group = Species)) +
-  geom_point(size = 5, alpha = 0.6) +
-  geom_line(size = 0.8, alpha = 0.75)+
-  scale_color_brewer(palette = "Dark2")+
-  facet_wrap(~Site) +
-  theme_minimal() +
-  labs(
-    title = "Mean height (2023) of monoculture species across treatments",
-    x = "Treatment",
-    y = "Mean Height (cm)"
-  )
-
-```
-
-```{r Plot mean Height 2024}
-ggplot(SubsetSummaryHeight, aes(x = Treatment, y = Mean_Height_2024, color = Species, group = Species)) +
-  geom_point(size = 5, alpha = 0.6) +
-  geom_line(size = 0.8, alpha = 0.75)+
-  scale_color_brewer(palette = "Dark2")+
-  facet_wrap(~Site) +
-  theme_minimal() +
-  labs(
-    title = "Mean height (2024) of monoculture species across treatments",
-    x = "Treatment",
-    y = "Mean Height (cm)"
-  )
-
-```
-
-```{r Plot mean RGR BA}
-ggplot(SubsetSummaryBA, aes(x = Treatment, y = Mean_RGR_BA, color = Species, group = Species)) +
-  geom_point(size = 6, alpha = 0.6) +
-  geom_line(size = 1, alpha = 0.75)+
-  scale_color_brewer(palette = "Dark2")+
-  facet_wrap(~Site) +
-  theme_minimal() +
-  labs(
-    title = "Mean RGR of monoculture species' basal area across treatments",
-    x = "Treatment",
-    y = "Mean RGR (Basal Area)"
-  )
-
-```
-
-```{r Plot mean RGR Height}
-ggplot(SubsetSummaryHeight, aes(x = Treatment, y = Mean_RGR_Height, color = Species, group = Species)) +
-  geom_point(size = 5, alpha = 0.6) +
-  geom_line(size = 0.8, alpha = 0.75)+
-  scale_color_brewer(palette = "Dark2")+
-  facet_wrap(~Site) +
-  theme_minimal() +
-  labs(
-    title = "Mean RGR of monoculture species' height across treatments",
-    x = "Treatment",
-    y = "Mean RGR (Height)"
-  )
-
-```
-
-```{r Statistical analysis (fit models)}
-library(lme4)
-lm_height2024 <- lm(Mean_Height_2024 ~ Treatment * Site + Species, data = SubsetSummaryHeight)
-lm_ba2024 <- lm(Mean_BA_2024 ~ Treatment * Site + Species, data = SubsetSummaryBA)
-lm_height2023 <- lm(Mean_Height_2023 ~ Treatment * Site + Species, data = SubsetSummaryHeight)
-lm_ba2023 <- lm(Mean_BA_2023 ~ Treatment * Site + Species, data = SubsetSummaryBA)
-lm_RGR_ba <- lm(Mean_RGR_BA ~ Treatment * Site + Species, data = SubsetSummaryBA)
-lm_RGR_height <- lm(Mean_RGR_Height ~ Treatment * Site + Species, data = SubsetSummaryHeight)
-```
-
-```{r Plot also other species - BA}
-# Identify species that are NOT in monoculture treatment (M1)
-NonMonocultureSpecies <- TreeDataGrowthBA %>%
-  filter(!Species %in% MonocultureSpecies$Species)
-
-# Calculate the mean BA of all other species per Plot, Treatment and Site
-OtherSpeciesSummaryBA <- NonMonocultureSpecies %>%
-  group_by(Site, Treatment, Plot_number, Species) %>%
-  summarise(
-    Mean_BA_2023 = mean(BA_2023, na.rm = TRUE),
-    sd_BA_2023 = sd(BA_2023,na.rm = TRUE),
-    Mean_BA_2024 = mean(BA_2024, na.rm = TRUE),
-    sd_BA_2024 = sd(BA_2024,na.rm = TRUE),
-    Mean_RGR_BA = mean(RGR_BA, na.rm = TRUE),
-    sd_RGR_BA = sd(RGR_BA,na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  mutate(Species = "All Other Species") # Label them as a single category
-
-#Calculate the treatment avg
-OtherSpeciesSummaryBA <- OtherSpeciesSummaryBA %>%
-  group_by(Site, Treatment, Species) %>%
-  summarise(
-    Mean_BA_2023 =mean(Mean_BA_2023, na.rm = TRUE),
-    sd_BA_2023 = mean(sd_BA_2023,na.rm = TRUE),
-    Mean_BA_2024 = mean(Mean_BA_2024, na.rm = TRUE),
-    sd_BA_2024 = mean(sd_BA_2024,na.rm = TRUE),
-    Mean_RGR_BA = mean(Mean_RGR_BA, na.rm = TRUE),
-    sd_RGR_BA = mean(sd_RGR_BA,na.rm = TRUE),
-    .groups = "drop"
-  ) 
-
-# Ensure Treatment levels are correctly ordered
-OtherSpeciesSummaryBA <- OtherSpeciesSummaryBA %>%
-  mutate(Treatment = factor(Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP")))
-
-# Combine Monoculture species summary with the Other Species summary
-CombinedSummaryBA <- bind_rows(SubsetSummaryBA, OtherSpeciesSummaryBA)
-
-#plot 2023
-monoculture2023<-ggplot(CombinedSummaryBA, aes(x = Treatment, y = Mean_BA_2023, color = Species, group = Species)) +
-  geom_point(size = 10, alpha = 0.6) +
-  geom_errorbar(aes(ymin = Mean_BA_2023 - sd_BA_2023, ymax = Mean_BA_2023 +sd_BA_2023), width = 0.15,    # Width of horizontal caps
-               #linetype = "dashed", # Dashed whisker lines
-               size = 0.4) +
-  geom_line(size = 2, alpha = 0.8, type ="dashed") +
-  scale_color_manual(values = c(brewer.pal(n = 8, name = "Dark2"), "black")) + # Custom colors, "black" for other species
-  theme_minimal() +
-  theme(legend.position = "none")+
-  labs(
-    x = "Treatment",
-    y = expression(" Mean Individual BA (" * cm^2 * ")")
-  )+
-  theme(
-    axis.title = element_text(size = 16),  # Increase axis title size
-  )
-
-#save plot
-ggsave("~/Desktop/monoculture2023.jpeg", plot=monoculture2023, width = 5, height = 5, dpi = 300)
-
-
-#plot2024
-monoculture2024<-ggplot(CombinedSummaryBA, aes(x = Treatment, y = Mean_BA_2024, color = Species, group = Species)) +
-  geom_point(size =10, alpha = 0.6) +
-  geom_line(size = 2, alpha = 0.8, type ="dashed") +
-  geom_errorbar(aes(ymin = Mean_BA_2024 - sd_BA_2024, ymax = Mean_BA_2024 +sd_BA_2024), width = 0.15,    # Width of horizontal caps
-               #linetype = "dashed", # Dashed whisker lines
-               size = 0.4) +
-  scale_color_manual(values = c(brewer.pal(n = 8, name = "Dark2"), "black")) + # Custom colors, "black" for other species
-  theme_minimal() +
-  theme(legend.position = "none")+
-  labs(
-    x = "Treatment",
-    y = expression(" Mean Individual BA (" * cm^2 * ")")
-  )+
-  theme(
-    axis.title = element_text(size = 16),  # Increase axis title size
-  )
-
-#save plot
-ggsave("~/Desktop/monoculture2024.jpeg", plot=monoculture2024, width = 5, height = 5, dpi = 300)
-
-#plotRGR
-monocultureRGR<-ggplot(CombinedSummaryBA, aes(x = Treatment, y = Mean_RGR_BA, color = Species, group = Species)) +
-  geom_point(size =10, alpha = 0.6) +
-  geom_line(size = 2, alpha = 0.8, type ="dashed") +
-  scale_color_manual(values = c(brewer.pal(n = 8, name = "Dark2"), "black")) + # Custom colors, "black" for other species
-  theme_minimal() +
-  geom_errorbar(aes(ymin = Mean_RGR_BA - sd_RGR_BA, ymax = Mean_RGR_BA +sd_RGR_BA), width = 0.1,    # Width of horizontal caps
-               #linetype = "dashed", # Dashed whisker lines
-               size = 0.5) +
-  labs(
-    x = "Treatment",
-    y = expression(" Mean Individual RGR (" * cm^2 / day * ")")
-  )+
-  theme(
-    axis.title = element_text(size = 16),  # Increase axis title size
-  )
-
-#save plot
-ggsave("~/Desktop/monocultureRGR.jpeg", plot=monocultureRGR, width = 10, height = 5, dpi = 300)
-
-
+ggsave("inga_vs_others_height.jpeg", width = 6, height = 5, dpi = 300)
 ```
