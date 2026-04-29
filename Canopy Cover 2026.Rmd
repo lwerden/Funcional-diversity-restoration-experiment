@@ -183,10 +183,10 @@ gini_canopy_summary <- gini_canopy_cover %>%
 # Fit the linear mixed-effects model
 gini_model_canopy <- lmer(Gini_Canopy ~ Treatment * Site + (1 |`Plot identification`), data = gini_canopy_cover)
 
-summary(canopy_model)
+summary(gini_model_canopy)
 
 # Check model fit by plotting residuals
-simulationOutput <- simulateResiduals(fittedModel = canopy_model, plot = TRUE)
+simulationOutput <- simulateResiduals(fittedModel = gini_model_canopy, plot = TRUE)
 plot(simulationOutput)
 # Extra diagnostic tests
 testDispersion(simulationOutput)     # Over dispersion check
@@ -222,7 +222,7 @@ ginicanopybar <- ggplot(gini_canopy_summary, aes(x = Treatment, y = mean_gini , 
   facet_wrap(~ Site) +  # Creates a separate panel for each site
   labs(
        x = "Treatment",
-       y = "Mean Canopy Cover (%)") +
+       y = "Mean Gini Coefficient of Canopy Cover") +
   theme(legend.position = "none")+
   theme_classic()
 

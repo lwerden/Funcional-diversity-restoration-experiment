@@ -407,12 +407,12 @@ ggplot(SubsetSummaryHeight, aes(x = Treatment, y = Mean_RGR_Height, color = Spec
 
 ```{r Statistical analysis (fit models)}
 library(lme4)
-lm_height2024 <- lm(Mean_Height_2024 ~ Treatment * Site + Species, data = SubsetSummary)
-lm_ba2024 <- lm(Mean_BA_2024 ~ Treatment * Site + Species, data = SubsetSummary)
-lm_height2023 <- lm(Mean_Height_2023 ~ Treatment * Site + Species, data = SubsetSummary)
-lm_ba2023<- lm(Mean_BA_2023 ~ Treatment * Site + Species, data = SubsetSummary)
-lm_RGR_ba<- lm(Mean_RGR_Height ~ Treatment * Site + Species, data = SubsetSummary)
-lm_RGR_height<- lm(Mean_RGR_BA ~ Treatment * Site + Species, data = SubsetSummary)
+lm_height2024 <- lm(Mean_Height_2024 ~ Treatment * Site + Species, data = SubsetSummaryHeight)
+lm_ba2024 <- lm(Mean_BA_2024 ~ Treatment * Site + Species, data = SubsetSummaryBA)
+lm_height2023 <- lm(Mean_Height_2023 ~ Treatment * Site + Species, data = SubsetSummaryHeight)
+lm_ba2023 <- lm(Mean_BA_2023 ~ Treatment * Site + Species, data = SubsetSummaryBA)
+lm_RGR_ba <- lm(Mean_RGR_BA ~ Treatment * Site + Species, data = SubsetSummaryBA)
+lm_RGR_height <- lm(Mean_RGR_Height ~ Treatment * Site + Species, data = SubsetSummaryHeight)
 ```
 
 ```{r Plot also other species - BA}

@@ -52,8 +52,8 @@ library(lme4)
 # Fit the linear mixed-effects model
 gini_model_3 <- lmer(Gini_Coefficient_year_3 ~ Treatment * Site + (1 | Site), data = gini_results_3)
 plot(gini_model_3)
-summary(mod3)
-Anova(mod3, type=3)
+summary(gini_model_3)
+Anova(gini_model_3, type = 3)
 # Check model fit by plotting residuals
 simulationOutput3 <- simulateResiduals(fittedModel = gini_model_3, plot = TRUE)
 plot(simulationOutput3)
