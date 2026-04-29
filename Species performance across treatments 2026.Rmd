@@ -22,15 +22,8 @@ library(car)
 ```
 
 ```{r Load data}
-TreeData <- read_excel("FDiv_PlantedTreeData_final_excel.xlsx", sheet = "SurvivalGrowth")
-
-TreeData <- TreeData %>%
-  mutate(
-    Height_year_2 = as.numeric(Height_year_2),
-    Height_year_3 = as.numeric(Height_year_3),
-    BA_year_2 = as.numeric(BA_year_2),
-    BA_year_3 = as.numeric(BA_year_3)
-  )
+source("00_preprocess.R")
+# TreeData now has: BA zeros → NA, outlier fix, DBH back-calculated
 ```
 
 ```{r Plot-level total BA — year 3}

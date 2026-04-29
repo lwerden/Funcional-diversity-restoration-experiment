@@ -23,7 +23,8 @@ library(car)
 ```
 
 ```{r Load data}
-TreeData <- read_excel("FDiv_PlantedTreeData_final_excel.xlsx", sheet = "SurvivalGrowth")
+source("00_preprocess.R")
+# TreeData now has: BA zeros → NA, outlier fix, DBH back-calculated
 ```
 
 ```{r Gini coefficient year 3}
