@@ -78,9 +78,9 @@ ginibar3 <- ggplot(gini_summary_3, aes(x = Treatment, y = mean_gini, fill = Trea
   geom_text(data = cld_sign_gini_3, family = "sans", show.legend = FALSE,
             check_overlap = FALSE, size = 3, vjust = 1,
             aes(x = Treatment, y = Inf, label = .group)) +
-  scale_fill_manual(values = c("12SP" = "darkolivegreen", "2SP" = "darkseagreen2",
-                               "6SP" = "darkseagreen", "M1" = "firebrick",
-                               "M2" = "coral"), guide = "none") +
+  scale_fill_manual(values = c("M1" = "#D55E00", "M2" = "#CC79A7",
+                               "2SP" = "#56B4E9", "6SP" = "#009E73",
+                               "12SP" = "#0072B2"), guide = "none") +
   facet_wrap(~ Site) +
   labs(x = "Treatment", y = "Mean Gini Coefficient of Height") +
   theme_classic()
@@ -111,9 +111,9 @@ ginibar3_pooled <- ggplot(gini_summary_3_pooled, aes(x = Treatment, y = mean_gin
   geom_text(data = cld_sign_gini_3_pooled,
             aes(x = Treatment, y = Inf, label = .group),
             vjust = 1, size = 3) +
-  scale_fill_manual(values = c("12SP" = "darkolivegreen", "2SP" = "darkseagreen2",
-                               "6SP" = "darkseagreen", "M1" = "firebrick",
-                               "M2" = "coral"), guide = "none") +
+  scale_fill_manual(values = c("M1" = "#D55E00", "M2" = "#CC79A7",
+                               "2SP" = "#56B4E9", "6SP" = "#009E73",
+                               "12SP" = "#0072B2"), guide = "none") +
   labs(x = "Treatment", y = "Mean Gini Coefficient of Height") +
   theme_classic()
 

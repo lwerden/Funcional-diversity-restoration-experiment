@@ -65,9 +65,9 @@ ggplot(avg_plot_BA, aes(x = Treatment, y = Avg_BA, fill = Treatment)) +
   geom_text(data = cld_ba, family = "sans", show.legend = FALSE,
             check_overlap = FALSE, size = 3, vjust = 1,
             aes(x = Treatment, y = Inf, label = .group)) +
-  scale_fill_manual(values = c("12SP" = "darkolivegreen", "2SP" = "darkseagreen2",
-                               "6SP" = "darkseagreen", "M1" = "firebrick",
-                               "M2" = "coral"), guide = "none") +
+  scale_fill_manual(values = c("M1" = "#D55E00", "M2" = "#CC79A7",
+                               "2SP" = "#56B4E9", "6SP" = "#009E73",
+                               "12SP" = "#0072B2"), guide = "none") +
   facet_wrap(~ Site) +
   labs(x = "Treatment", y = expression("Total Basal Area (" * cm^2 * ")")) +
   theme_classic()
@@ -164,7 +164,7 @@ ggplot(Inga_summary, aes(x = Treatment, y = mean_BA, color = Species_group, grou
   geom_line(linewidth = 1, alpha = 0.75) +
   geom_errorbar(aes(ymin = pmax(mean_BA - sd_BA, 0), ymax = mean_BA + sd_BA),
                 width = 0.15, linewidth = 0.4) +
-  scale_color_manual(values = c("Inga edulis" = "darkorange", "Other species" = "darkgreen")) +
+  scale_color_manual(values = c("Inga edulis" = "#D55E00", "Other species" = "#009E73")) +
   labs(x = "Treatment", y = expression("Mean Individual BA (" * cm^2 * ")"), color = "") +
   theme_minimal() +
   theme(axis.title = element_text(size = 14))
@@ -178,7 +178,7 @@ ggplot(Inga_summary, aes(x = Treatment, y = mean_Height, color = Species_group, 
   geom_line(linewidth = 1, alpha = 0.75) +
   geom_errorbar(aes(ymin = pmax(mean_Height - sd_Height, 0), ymax = mean_Height + sd_Height),
                 width = 0.15, linewidth = 0.4) +
-  scale_color_manual(values = c("Inga edulis" = "darkorange", "Other species" = "darkgreen")) +
+  scale_color_manual(values = c("Inga edulis" = "#D55E00", "Other species" = "#009E73")) +
   labs(x = "Treatment", y = "Mean Individual Height (cm)", color = "") +
   theme_minimal() +
   theme(axis.title = element_text(size = 14))
