@@ -1,3 +1,4 @@
-data_cleaned.rds
+*.rds
 *.jpeg
 *.svg
+*.png
