@@ -100,20 +100,28 @@ wood_density <- data.frame(
 TreeData <- TreeData %>%
   left_join(wood_density, by = "Species")
 
+# Standardize treatment factor levels (uppercase, consistent order)
+treatment_levels <- c("C", "M1", "M2", "2SP", "6SP", "12SP")
+TreeData$Treatment <- factor(TreeData$Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP"))
+
+# Preprocess CanopyCover sheet with same standards
+CanopyCover <- read_excel("FDiv_PlantedTreeData_final_excel.xlsx", sheet = "CanopyCover")
+CanopyCover$Treatment <- toupper(CanopyCover$Treatment)
+CanopyCover$Treatment <- factor(CanopyCover$Treatment, levels = treatment_levels)
+CanopyCover <- CanopyCover %>% rename(Plot_number = `Plot identification`)
+
 # Summary
 cat("=== Preprocessing summary ===\n")
-cat("Total rows:", nrow(TreeData), "\n")
+cat("TreeData:", nrow(TreeData), "rows\n")
+cat("CanopyCover:", nrow(CanopyCover), "rows\n")
 cat("BA_year_3:", sum(!is.na(TreeData$BA_year_3)), "measured,",
     sum(is.na(TreeData$BA_year_3)), "NA\n")
 cat("DBH_year_3 range:", round(min(TreeData$DBH_year_3, na.rm = TRUE), 2), "—",
     round(max(TreeData$DBH_year_3, na.rm = TRUE), 2), "cm\n")
 cat("Wood density matched:", sum(!is.na(TreeData$WD)), "of", nrow(TreeData), "rows\n")
-cat("Species with WD:", length(unique(TreeData$Species[!is.na(TreeData$WD)])),
-    "of", length(unique(TreeData$Species)), "\n")
-cat("\nFixes applied:\n")
-cat("  - Species spelling: Astronium graveolons -> graveolens, Aspoidosperam -> Aspidosperma\n")
-cat("  - Outlier: FCEA 2SP Plot5 Tree27 BA 604.28 -> 60.43\n")
-cat("  - BA = 0 converted to NA (unmeasurable diameter)\n")
+cat("Treatment levels (TreeData):", levels(TreeData$Treatment), "\n")
+cat("Treatment levels (CanopyCover):", levels(CanopyCover$Treatment), "\n")
 
 saveRDS(TreeData, "data_cleaned.rds")
-cat("\nSaved: data_cleaned.rds\n")
+saveRDS(CanopyCover, "canopy_cleaned.rds")
+cat("\nSaved: data_cleaned.rds, canopy_cleaned.rds\n")
