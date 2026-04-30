@@ -18,6 +18,8 @@ TreeData <- TreeData %>%
     Species == "Astronium graveolons" ~ "Astronium graveolens",
     Species == "Aspoidosperam myristicofolium" ~ "Aspidosperma myristicifolium",
     Species == "Erythrina poepiggiana" ~ "Erythrina poeppigiana",
+    Species == "Platymiscium cuerense" ~ "Platymiscium curuense",
+    Species == "Licania platypus" ~ "Moquilea platypus",
     TRUE ~ Species
   ))
 
@@ -57,8 +59,8 @@ wood_density <- data.frame(
     "Erythrina poeppigiana", "Ficus insipida", "Ficus maxima",
     "Garcinia madruno", "Handroanthus impetiginosus", "Handroanthus ochraceus",
     "Heliocarpus appendiculatus", "Inga edulis", "Lacistema aggregatum",
-    "Licania platypus", "Ocotea puberula", "Persea caerulea",
-    "Platymiscium cuerense", "Quercus insignis", "Saurauia montana",
+    "Moquilea platypus", "Ocotea puberula", "Persea caerulea",
+    "Platymiscium curuense", "Quercus insignis", "Saurauia montana",
     "Simarouba amara", "Spondias mombin", "Terminalia amazonia",
     "Theobroma simiarum", "Viburnum costaricanum", "Zygia longifolia",
     "Aspidosperma myristicifolium",
