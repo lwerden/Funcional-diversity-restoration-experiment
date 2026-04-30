@@ -17,6 +17,7 @@ TreeData <- TreeData %>%
   mutate(Species = case_when(
     Species == "Astronium graveolons" ~ "Astronium graveolens",
     Species == "Aspoidosperam myristicofolium" ~ "Aspidosperma myristicifolium",
+    Species == "Erythrina poepiggiana" ~ "Erythrina poeppigiana",
     TRUE ~ Species
   ))
 
@@ -53,7 +54,7 @@ wood_density <- data.frame(
     "Astronium graveolens", "Calophyllum brasiliense", "Cedrela tonduzii",
     "Citharexylum cooperi", "Cojoba arborea", "Cordia alliodora",
     "Croton draco", "Croton schiedeanus", "Dendropanax ravenii",
-    "Erythrina poepiggiana", "Ficus insipida", "Ficus maxima",
+    "Erythrina poeppigiana", "Ficus insipida", "Ficus maxima",
     "Garcinia madruno", "Handroanthus impetiginosus", "Handroanthus ochraceus",
     "Heliocarpus appendiculatus", "Inga edulis", "Lacistema aggregatum",
     "Licania platypus", "Ocotea puberula", "Persea caerulea",
@@ -64,10 +65,10 @@ wood_density <- data.frame(
     "Chrysophyllum cainito", "Cupania rufescens",
     "Sterculia recordiana", "Vitex cooperi"),
   WD = c(
-    0.868, 0.571, 0.360,
+    0.861, 0.571, 0.360,
     0.667, 0.683, 0.469,
     0.510, 0.510, 0.537,
-    0.305, 0.370, 0.360,
+    0.302, 0.370, 0.360,
     0.735, 0.831, 0.507,
     0.185, 0.580, 0.508,
     0.621, 0.433, 0.425,
@@ -78,10 +79,10 @@ wood_density <- data.frame(
     0.661, 0.608,
     0.490, 0.565),
   WD_source = c(
-    "Zanne (species)", "BIOMASS+BIEN+Zanne+TWDD+CIRAD", "BIOMASS+BIEN+Zanne",
+    "BIOMASS+BIEN+Zanne", "BIOMASS+BIEN+Zanne+TWDD+CIRAD", "BIOMASS+BIEN+Zanne",
     "BIOMASS (genus)", "BIEN (species)", "BIOMASS+BIEN+Zanne+TWDD+CIRAD",
     "BIOMASS (genus)", "BIOMASS (genus)", "BIEN (species)",
-    "BIOMASS (genus) + Zanne", "BIOMASS+BIEN+Zanne+CIRAD", "BIOMASS+BIEN+Zanne",
+    "BIOMASS+BIEN+Zanne", "BIOMASS+BIEN+Zanne+CIRAD", "BIOMASS+BIEN+Zanne",
     "BIOMASS+BIEN+Zanne", "BIEN+TWDD", "TWDD (species)",
     "BIOMASS+BIEN+Zanne", "BIOMASS+BIEN+Zanne", "BIOMASS+BIEN+Zanne",
     "BIOMASS+BIEN+Zanne", "BIOMASS+BIEN+Zanne", "BIOMASS+BIEN+Zanne",
