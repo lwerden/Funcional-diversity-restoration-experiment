@@ -29,19 +29,36 @@ site_bar <- function(data, val_col, ylab, filename) {
     group_by(Site, Treatment) %>%
     summarise(m = mean(val, na.rm = TRUE), s = sd(val, na.rm = TRUE), .groups = "drop")
 
+  # Per-site y_top for CLD placement
+  site_max <- data %>%
+    group_by(Site) %>%
+    summarise(y_max = max(val, na.rm = TRUE), .groups = "drop")
+  site_err_max <- sm %>%
+    group_by(Site) %>%
+    summarise(y_err = max(m + s, na.rm = TRUE), .groups = "drop")
+  site_tops <- site_max %>%
+    left_join(site_err_max, by = "Site") %>%
+    mutate(y_top = pmax(y_max, y_err) * 1.08)
+  cld_df <- cld_df %>% left_join(site_tops %>% dplyr::select(Site, y_top), by = "Site")
+
   p <- ggplot(sm, aes(x = Treatment, y = m, fill = Treatment)) +
     geom_bar(stat = "identity") +
     geom_jitter(data = data, aes(y = val),
                 width = 0.2, size = 1.2, alpha = 0.4, color = "black") +
     geom_errorbar(aes(ymin = pmax(m - s, 0), ymax = m + s),
                   width = 0.2, linetype = "dashed", linewidth = 0.4) +
-    geom_text(data = cld_df, aes(y = Inf, label = .group),
-              vjust = 1, size = 2.5) +
+    geom_text(data = cld_df, aes(y = y_top, label = .group),
+              size = 4, fontface = "bold", hjust = 0.5) +
     scale_fill_manual(values = trt_colors, guide = "none") +
-    facet_wrap(~ Site, ncol = 2) +
+    facet_wrap(~ Site, ncol = 2, scales = "free_y") +
     labs(x = "Treatment", y = ylab) +
     theme_classic() +
-    theme(strip.text = element_text(face = "bold"))
+    theme(
+      strip.text = element_text(face = "bold"),
+      axis.text.x = element_text(size = 11, face = "bold"),
+      axis.text.y = element_text(size = 10),
+      axis.title = element_text(size = 12)
+    )
 
   ggsave(filename, plot = p, width = 8, height = 7, dpi = 300)
   cat("Saved:", filename, "\n")
