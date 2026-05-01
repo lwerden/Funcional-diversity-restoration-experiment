@@ -101,14 +101,16 @@ TreeData <- TreeData %>%
   left_join(wood_density, by = "Species")
 
 # Standardize treatment factor levels (uppercase, consistent order)
-treatment_levels <- c("C", "M1", "M2", "2SP", "6SP", "12SP")
-TreeData$Treatment <- factor(TreeData$Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP"))
+treatment_levels <- c("M1", "M2", "2SP", "6SP", "12SP")
+TreeData$Treatment <- factor(TreeData$Treatment, levels = treatment_levels)
 
 # Preprocess CanopyCover sheet with same standards
 CanopyCover <- read_excel("FDiv_PlantedTreeData_final_excel.xlsx", sheet = "CanopyCover")
 CanopyCover$Treatment <- toupper(CanopyCover$Treatment)
+CanopyCover <- CanopyCover %>%
+  rename(Plot_number = `Plot identification`) %>%
+  filter(Treatment != "C")
 CanopyCover$Treatment <- factor(CanopyCover$Treatment, levels = treatment_levels)
-CanopyCover <- CanopyCover %>% rename(Plot_number = `Plot identification`)
 
 # Summary
 cat("=== Preprocessing summary ===\n")

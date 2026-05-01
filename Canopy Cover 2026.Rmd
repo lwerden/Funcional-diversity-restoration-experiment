@@ -27,8 +27,8 @@ source("00_preprocess.R")
 ```
 
 ```{r Treatment colors}
-trt_colors <- c("C" = "grey60", "M1" = "#D55E00", "M2" = "#CC79A7",
-                "2SP" = "#56B4E9", "6SP" = "#009E73", "12SP" = "#0072B2")
+trt_colors <- c("M1" = "#D55E00", "M2" = "#E69F00",
+                "2SP" = "darkseagreen2", "6SP" = "darkseagreen", "12SP" = "darkolivegreen")
 ```
 
 ```{r Summarize year 3}

@@ -65,9 +65,9 @@ ggplot(avg_plot_BA, aes(x = Treatment, y = Avg_BA, fill = Treatment)) +
   geom_text(data = cld_ba, family = "sans", show.legend = FALSE,
             check_overlap = FALSE, size = 3, vjust = 1,
             aes(x = Treatment, y = Inf, label = .group)) +
-  scale_fill_manual(values = c("M1" = "#D55E00", "M2" = "#CC79A7",
-                               "2SP" = "#56B4E9", "6SP" = "#009E73",
-                               "12SP" = "#0072B2"), guide = "none") +
+  scale_fill_manual(values = c("M1" = "#D55E00", "M2" = "#E69F00",
+                               "2SP" = "darkseagreen2", "6SP" = "darkseagreen",
+                               "12SP" = "darkolivegreen"), guide = "none") +
   facet_wrap(~ Site) +
   labs(x = "Treatment", y = expression("Total Basal Area (" * cm^2 * ")")) +
   theme_classic()
