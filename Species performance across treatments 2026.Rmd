@@ -79,7 +79,7 @@ ggsave("total_BA_year3.jpeg", width = 8, height = 6, dpi = 300)
 ht_plot <- TreeData %>%
   filter(!is.na(Height_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
-  summarise(mean_ht = mean(Height_year_3, na.rm = TRUE), .groups = "drop")
+  summarise(mean_ht = mean(Height_year_3 / 100, na.rm = TRUE), .groups = "drop")
 
 ht_plot$Treatment <- factor(ht_plot$Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP"))
 
@@ -148,8 +148,8 @@ Inga_summary <- TreeData %>%
   summarise(
     mean_BA = mean(BA_year_3, na.rm = TRUE),
     sd_BA = sd(BA_year_3, na.rm = TRUE),
-    mean_Height = mean(Height_year_3, na.rm = TRUE),
-    sd_Height = sd(Height_year_3, na.rm = TRUE),
+    mean_Height = mean(Height_year_3 / 100, na.rm = TRUE),
+    sd_Height = sd(Height_year_3 / 100, na.rm = TRUE),
     n = n(),
     .groups = "drop"
   )
@@ -179,7 +179,7 @@ ggplot(Inga_summary, aes(x = Treatment, y = mean_Height, color = Species_group, 
   geom_errorbar(aes(ymin = pmax(mean_Height - sd_Height, 0), ymax = mean_Height + sd_Height),
                 width = 0.15, linewidth = 0.4) +
   scale_color_manual(values = c("Inga edulis" = "#D55E00", "Other species" = "#009E73")) +
-  labs(x = "Treatment", y = "Mean Individual Height (cm)", color = "") +
+  labs(x = "Treatment", y = "Mean Individual Height (m)", color = "") +
   theme_minimal() +
   theme(axis.title = element_text(size = 14))
 

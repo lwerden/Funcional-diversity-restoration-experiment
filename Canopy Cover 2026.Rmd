@@ -58,7 +58,7 @@ simulationOutput <- simulateResiduals(fittedModel = canopy_model, plot = TRUE)
 testDispersion(simulationOutput)
 testZeroInflation(simulationOutput)
 
-cld_cc_site <- as.data.frame(cld(emmeans(canopy_model, ~ Treatment | Site)$emmeans,
+cld_cc_site <- as.data.frame(cld(emmeans(canopy_model, ~ Treatment | Site),
   Letters = letters, adjust = "tukey", alpha = 0.05, decreasing = TRUE))
 
 cld_cc_pooled <- as.data.frame(cld(emmeans(canopy_model, ~ Treatment),
@@ -125,7 +125,7 @@ simulationOutput <- simulateResiduals(fittedModel = gini_model_cc, plot = TRUE)
 testDispersion(simulationOutput)
 testZeroInflation(simulationOutput)
 
-cld_gini_cc <- as.data.frame(cld(emmeans(gini_model_cc, ~ Treatment | Site)$emmeans,
+cld_gini_cc <- as.data.frame(cld(emmeans(gini_model_cc, ~ Treatment | Site),
   Letters = letters, adjust = "tukey", alpha = 0.05, decreasing = TRUE))
 
 ginibar <- ggplot(gini_cc_avg, aes(x = Treatment, y = mean_gini, fill = Treatment)) +
@@ -147,30 +147,35 @@ ggsave("ginicanopyyear3.jpeg", plot = ginibar, width = 8, height = 5, dpi = 300)
 ```{r Time series — canopy cover}
 CC_LLFS <- CanopyCover %>%
   filter(Site == "LLFS") %>%
-  mutate(Year = as.character(Year),
-         Year = ifelse(Year == "2023", "Year 2", Year),
-         Year = ifelse(Year == "2024", "Year 3", Year))
+  mutate(Year_label = case_when(
+    Year == "2" ~ "Year 2",
+    Year == "3" ~ "Year 3",
+    TRUE ~ NA_character_
+  ))
 
 CC_other <- CanopyCover %>%
   filter(Site != "LLFS") %>%
-  mutate(Year = as.character(Year),
-         Year = ifelse(Year == "2023", "Year 1", Year),
-         Year = ifelse(Year == "2024", "Year 2", Year),
-         Year = ifelse(Year == "2025", "Year 3", Year))
+  mutate(Year_label = case_when(
+    Year == "1" ~ "Year 1",
+    Year == "2" ~ "Year 2",
+    Year == "3" ~ "Year 3",
+    TRUE ~ NA_character_
+  ))
 
 CC_time <- bind_rows(CC_LLFS, CC_other) %>%
-  mutate(Year = factor(Year, levels = c("Year 1", "Year 2", "Year 3")))
+  filter(!is.na(Year_label)) %>%
+  mutate(Year_label = factor(Year_label, levels = c("Year 1", "Year 2", "Year 3")))
 
 CC_time_summary <- CC_time %>%
-  group_by(Site, Treatment, Plot_number, Year) %>%
+  group_by(Site, Treatment, Plot_number, Year_label) %>%
   summarise(Plot_CC = mean(Percent_canopy_cover, na.rm = TRUE), .groups = "drop")
 
-canopy_time_model <- lmer(Plot_CC ~ Treatment * Site * Year + (1 | Site:Plot_number),
+canopy_time_model <- lmer(Plot_CC ~ Treatment * Site * Year_label + (1 | Site:Plot_number),
                            data = CC_time_summary)
 anova(canopy_time_model)
 
 CC_time_avg <- CC_time_summary %>%
-  group_by(Site, Treatment, Year) %>%
+  group_by(Site, Treatment, Year_label) %>%
   summarize(Plot_CC = mean(Plot_CC), SD_CC = sd(Plot_CC), .groups = "drop")
 
 trt_labels <- c("12SP" = "12-species plots", "2SP" = "2-species plots",
@@ -178,12 +183,10 @@ trt_labels <- c("12SP" = "12-species plots", "2SP" = "2-species plots",
                 "M2" = "Fleshy fruit monocultures (2)", "C" = "Control")
 
 for (site in c("FAB", "FCEA", "LLFS")) {
-  yr_filter <- if (site == "LLFS") NULL else "Year 1"
   d <- CC_time_avg %>% filter(Site == site)
-  if (!is.null(yr_filter)) d <- d %>% filter(Year != yr_filter)
 
   show_legend <- site == "LLFS"
-  p <- ggplot(d, aes(x = Year, y = Plot_CC, group = Treatment, color = Treatment)) +
+  p <- ggplot(d, aes(x = Year_label, y = Plot_CC, group = Treatment, color = Treatment)) +
     geom_line(linewidth = 1.2) + geom_point(size = 5) +
     scale_color_manual(values = trt_colors, labels = trt_labels) +
     ylim(0, 100) +
