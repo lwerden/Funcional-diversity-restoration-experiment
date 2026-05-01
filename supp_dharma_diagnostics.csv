@@ -1,0 +1,11 @@
+"Metric","Transform","Family","KS_p","Dispersion_p","Outlier_p"
+"Mean height (m)","none","Gaussian",0.301,0.19,1
+"Canopy cover (%)","none","Gaussian",0.5485,0.21,1
+"Carbon (Mg C/ha)","log","Gaussian",0.1642,0.184,0.0016
+"Total BA (cm²)","log","Gaussian",0.0572,0.192,0.0016
+"Height Gini","none","Gaussian",0.3695,0.214,0.2118
+"Canopy Gini","none","Gaussian",0.39,0.166,1
+"Carbon Gini","none","Gaussian",0.2133,0.176,0.2039
+"Inga BA (cm²)","log","Gaussian",0.4591,0.29,1
+"Inga height (m)","none","Gaussian",0.5399,0.256,1
+"Survival (%)","logit link","Binomial",0.4618,0.118,0.02
