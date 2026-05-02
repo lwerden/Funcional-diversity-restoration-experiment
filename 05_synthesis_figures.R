@@ -21,7 +21,7 @@ trt_colors_no_m2 <- c("M1" = "#D55E00",
 ht_plot <- TreeData %>%
   filter(!is.na(Height_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
-  summarise(mean_height = mean(Height_year_3), .groups = "drop")
+  summarise(mean_height = mean(Height_year_3 / 100), .groups = "drop")
 
 bio <- TreeData %>%
   filter(!is.na(DBH_year_3), !is.na(Height_year_3), Height_year_3 > 0, !is.na(WD))
@@ -73,7 +73,7 @@ make_radar <- function(data, colors, filename) {
       `Height\nGini` = mean(height_gini),
       `Carbon\nGini` = mean(carbon_gini),
       `Canopy\nGini` = mean(canopy_gini),
-      `Mean\nheight (m)` = mean(mean_height / 100),
+      `Mean\nheight (m)` = mean(mean_height),
       .groups = "drop")
 
   treatments <- as.character(radar_data$Treatment)
@@ -155,7 +155,7 @@ cat("Saved: supp_betadisper_pairwise.csv\n")
 
 # Richness-dispersion trend (excluding M2 — failed treatment, consistent with SEM)
 no_m2 <- pca_data$Treatment != "M2"
-bd_no_m2 <- betadisper(dist(pca_mat[no_m2, ]), pca_data$Treatment[no_m2])
+bd_no_m2 <- betadisper(dist(pca_mat[no_m2, ]), droplevels(pca_data$Treatment[no_m2]))
 richness <- case_when(
   pca_data$Treatment[no_m2] == "M1" ~ 1,
   pca_data$Treatment[no_m2] == "2SP" ~ 2,

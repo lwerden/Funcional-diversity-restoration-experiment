@@ -33,7 +33,8 @@ gini_results_3 <- TreeData %>%
   summarize(
     Gini_Coefficient_year_3 = ineq(Height_year_3[!is.na(Height_year_3)], type = "Gini"),
     .groups = "drop"
-  )
+  ) %>%
+  filter(!is.nan(Gini_Coefficient_year_3))
 
 gini_results_3$Treatment <- factor(gini_results_3$Treatment, levels = c("M1", "M2", "2SP", "6SP", "12SP"))
 

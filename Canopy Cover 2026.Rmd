@@ -89,7 +89,7 @@ CC_avg_pooled <- CC3 %>%
             sd_cc = sd(Percent_canopy_cover, na.rm = TRUE), .groups = "drop")
 
 CC_plot_pooled <- CC3 %>%
-  group_by(Treatment, Plot_number) %>%
+  group_by(Site, Treatment, Plot_number) %>%
   summarise(Plot_CC = mean(Percent_canopy_cover, na.rm = TRUE), .groups = "drop")
 
 canopybar_pooled <- ggplot(CC_avg_pooled, aes(x = Treatment, y = mean_cc, fill = Treatment)) +

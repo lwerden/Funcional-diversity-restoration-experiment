@@ -14,7 +14,7 @@ source("00_preprocess.R")
 # ============================================================
 ht <- TreeData %>% filter(!is.na(Height_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
-  summarise(mean_height = mean(Height_year_3), .groups = "drop")
+  summarise(mean_height = mean(Height_year_3 / 100), .groups = "drop")
 
 bio <- TreeData %>%
   filter(!is.na(DBH_year_3), !is.na(Height_year_3), Height_year_3 > 0, !is.na(WD))
@@ -25,7 +25,8 @@ c_plot <- bio %>%
 
 gini_ht <- TreeData %>% filter(!is.na(Height_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
-  summarize(height_gini = ineq(Height_year_3, type = "Gini"), .groups = "drop")
+  summarize(height_gini = ineq(Height_year_3, type = "Gini"), .groups = "drop") %>%
+  filter(!is.nan(height_gini))
 
 cc <- CanopyCover %>% filter(Year == "3") %>%
   group_by(Site, Treatment, Plot_number) %>%
@@ -33,7 +34,8 @@ cc <- CanopyCover %>% filter(Year == "3") %>%
 
 gini_cc <- CanopyCover %>% filter(Year == "3") %>%
   group_by(Site, Treatment, Plot_number) %>%
-  summarize(canopy_gini = ineq(Percent_canopy_cover, type = "Gini"), .groups = "drop")
+  summarize(canopy_gini = ineq(Percent_canopy_cover, type = "Gini"), .groups = "drop") %>%
+  filter(!is.nan(canopy_gini))
 
 base_data <- ht %>%
   inner_join(c_plot, by = c("Site", "Treatment", "Plot_number")) %>%
@@ -69,14 +71,15 @@ make_sem_fig <- function(sem_summary, nodes, predictor_name, filename) {
   b4 <- get_beta("canopy_cover", "height_gini")
   b5 <- get_beta("canopy_cover", "C_Mg_ha")
   b6 <- get_beta("canopy_gini", "canopy_cover")
+  b7 <- get_beta("canopy_gini", predictor_name)
 
   edges <- data.frame(
-    from_x = c(0, 0, 0, 1.5, 1.5, 3),
-    from_y = c(0, 0, 0, 1, -1, 0),
-    to_x = c(1.5, 1.5, 3, 3, 3, 4.5),
-    to_y = c(1, -1, 0, 0, 0, 0),
-    beta = c(b1$beta, b2$beta, b3$beta, b4$beta, b5$beta, b6$beta),
-    pval = c(b1$pval, b2$pval, b3$pval, b4$pval, b5$pval, b6$pval))
+    from_x = c(0, 0, 0, 1.5, 1.5, 3, 0),
+    from_y = c(0, 0, 0, 1, -1, 0, 0),
+    to_x = c(1.5, 1.5, 3, 3, 3, 4.5, 4.5),
+    to_y = c(1, -1, 0, 0, 0, 0, 0),
+    beta = c(b1$beta, b2$beta, b3$beta, b4$beta, b5$beta, b6$beta, b7$beta),
+    pval = c(b1$pval, b2$pval, b3$pval, b4$pval, b5$pval, b6$pval, b7$pval))
 
   shorten <- 0.38
   edges <- edges %>%
