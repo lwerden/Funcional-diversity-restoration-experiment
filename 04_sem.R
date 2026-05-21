@@ -1,3 +1,4 @@
+# Fig 5: piecewise SEM path diagrams (main: log richness; supplement: Inga proportion)
 library(dplyr)
 library(ggplot2)
 library(lme4)
@@ -5,9 +6,8 @@ library(lmerTest)
 library(ineq)
 library(BIOMASS)
 library(piecewiseSEM)
-library(readxl)
 
-source("00_preprocess.R")
+source("01_preprocess.R")
 
 # ============================================================
 # Build plot-level metrics for SEM
@@ -71,15 +71,15 @@ make_sem_fig <- function(sem_summary, nodes, predictor_name, filename) {
   b4 <- get_beta("canopy_cover", "height_gini")
   b5 <- get_beta("canopy_cover", "C_Mg_ha")
   b6 <- get_beta("canopy_gini", "canopy_cover")
-  b7 <- get_beta("canopy_gini", predictor_name)
+  # b7 (richness → canopy_gini) is ns and omitted from figure; reported in Table S4
 
   edges <- data.frame(
-    from_x = c(0, 0, 0, 1.5, 1.5, 3, 0),
-    from_y = c(0, 0, 0, 1, -1, 0, 0),
-    to_x = c(1.5, 1.5, 3, 3, 3, 4.5, 4.5),
-    to_y = c(1, -1, 0, 0, 0, 0, 0),
-    beta = c(b1$beta, b2$beta, b3$beta, b4$beta, b5$beta, b6$beta, b7$beta),
-    pval = c(b1$pval, b2$pval, b3$pval, b4$pval, b5$pval, b6$pval, b7$pval))
+    from_x = c(0, 0, 0, 1.5, 1.5, 3),
+    from_y = c(0, 0, 0, 1, -1, 0),
+    to_x = c(1.5, 1.5, 3, 3, 3, 4.5),
+    to_y = c(1, -1, 0, 0, 0, 0),
+    beta = c(b1$beta, b2$beta, b3$beta, b4$beta, b5$beta, b6$beta),
+    pval = c(b1$pval, b2$pval, b3$pval, b4$pval, b5$pval, b6$pval))
 
   shorten <- 0.38
   edges <- edges %>%
@@ -155,8 +155,8 @@ nodes_b <- data.frame(
            "Canopy\ncover (%)", "Canopy\nGini"),
   x = c(0, 1.5, 1.5, 3, 4.5),
   y = c(0, 1, -1, 0, 0),
-  r2 = c(NA, sem_b_summary$R2$Marginal[1], sem_b_summary$R2$Marginal[2],
-         sem_b_summary$R2$Marginal[3], sem_b_summary$R2$Marginal[4]))
+  r2 = c(NA, sem_b_summary$R2$Conditional[1], sem_b_summary$R2$Conditional[2],
+         sem_b_summary$R2$Conditional[3], sem_b_summary$R2$Conditional[4]))
 
 make_sem_fig(sem_b_summary, nodes_b, "log_richness", "fig5_sem.png")
 
@@ -184,7 +184,7 @@ nodes_a <- data.frame(
            "Canopy\ncover (%)", "Canopy\nGini"),
   x = c(0, 1.5, 1.5, 3, 4.5),
   y = c(0, 1, -1, 0, 0),
-  r2 = c(NA, sem_a_summary$R2$Marginal[1], sem_a_summary$R2$Marginal[2],
-         sem_a_summary$R2$Marginal[3], sem_a_summary$R2$Marginal[4]))
+  r2 = c(NA, sem_a_summary$R2$Conditional[1], sem_a_summary$R2$Conditional[2],
+         sem_a_summary$R2$Conditional[3], sem_a_summary$R2$Conditional[4]))
 
 make_sem_fig(sem_a_summary, nodes_a, "inga_prop", "supp_sem_inga.png")

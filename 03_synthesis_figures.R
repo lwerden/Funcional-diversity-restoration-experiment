@@ -1,14 +1,17 @@
+# Fig 4: radar plot, PCA, and betadisper multivariate dispersion analysis
 library(dplyr)
 library(ggplot2)
 library(ggrepel)
+library(ggtext)
 library(ineq)
 library(BIOMASS)
 library(patchwork)
 library(fmsb)
 library(png)
 library(grid)
+library(vegan)
 
-source("00_preprocess.R")
+source("01_preprocess.R")
 
 trt_colors_all <- c("M1" = "#D55E00", "M2" = "#E69F00",
                      "2SP" = "darkseagreen2", "6SP" = "darkseagreen", "12SP" = "darkolivegreen")
@@ -16,22 +19,26 @@ trt_colors_no_m2 <- c("M1" = "#D55E00",
                        "2SP" = "darkseagreen2", "6SP" = "darkseagreen", "12SP" = "darkolivegreen")
 
 # ============================================================
-# Compute plot-level metrics
+# Compute plot-level metrics (6 variables for PCA and betadisper)
 # ============================================================
+# Mean height per plot (cm -> m)
 ht_plot <- TreeData %>%
   filter(!is.na(Height_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarise(mean_height = mean(Height_year_3 / 100), .groups = "drop")
 
+# Biomass via Chave 2014 allometry, then carbon = AGB * 0.47
 bio <- TreeData %>%
   filter(!is.na(DBH_year_3), !is.na(Height_year_3), Height_year_3 > 0, !is.na(WD))
 bio$AGB_Mg <- computeAGB(D = bio$DBH_year_3, WD = bio$WD, H = bio$Height_year_3 / 100)
 bio$C_kg <- bio$AGB_Mg * 1000 * 0.47
 
+# Plot-level carbon scaled to Mg C per hectare (plot = 0.0225 ha)
 c_plot <- bio %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarise(C_Mg_ha = sum(AGB_Mg) / 0.0225 * 0.47, .groups = "drop")
 
+# Within-plot heterogeneity: Gini coefficients (0 = uniform, 1 = max inequality)
 gini_ht <- TreeData %>%
   filter(!is.na(Height_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
@@ -42,6 +49,7 @@ carbon_gini <- bio %>%
   summarize(carbon_gini = ineq(C_kg, type = "Gini"), .groups = "drop") %>%
   filter(!is.nan(carbon_gini))
 
+# Canopy cover: mean of 6 densiometer readings per plot
 cc_plot <- CanopyCover %>%
   filter(Year == "3") %>%
   group_by(Site, Treatment, Plot_number) %>%
@@ -53,6 +61,7 @@ gini_cc <- CanopyCover %>%
   summarize(canopy_gini = ineq(Percent_canopy_cover, type = "Gini"), .groups = "drop") %>%
   filter(!is.nan(canopy_gini))
 
+# Join all 6 metrics into one plot-level dataframe
 plot_metrics <- ht_plot %>%
   inner_join(c_plot, by = c("Site", "Treatment", "Plot_number")) %>%
   inner_join(gini_ht, by = c("Site", "Treatment", "Plot_number")) %>%
@@ -100,7 +109,7 @@ make_radar <- function(data, colors, filename) {
 make_radar(plot_metrics, trt_colors_all, "fig4a_radar.png")
 
 # ============================================================
-# PCA (no M2, matching radar)
+# PCA (all treatments including M2)
 # ============================================================
 pca_data <- plot_metrics
 
@@ -119,15 +128,7 @@ scores$Site <- pca_data$Site
 loadings <- as.data.frame(pca_result$rotation[, 1:2])
 loadings$Variable <- rownames(loadings)
 
-centroids <- scores %>%
-  group_by(Treatment) %>%
-  summarise(PC1 = mean(PC1), PC2 = mean(PC2), .groups = "drop")
-
 # Multivariate dispersion (betadisper) on full 6-variable space
-library(vegan)
-library(ggtext)
-
-# Full analysis with all 5 treatments (for supplement CSV)
 mv_dist_all <- dist(pca_mat)
 bd_all <- betadisper(mv_dist_all, pca_data$Treatment)
 bd_perm_all <- permutest(bd_all, pairwise = TRUE)
@@ -153,7 +154,8 @@ pw_table$Difference <- round(pw_table$Difference, 3)
 write.csv(pw_table, "supp_betadisper_pairwise.csv", row.names = FALSE)
 cat("Saved: supp_betadisper_pairwise.csv\n")
 
-# Richness-dispersion trend (excluding M2 — failed treatment, consistent with SEM)
+# Primary analysis: richness-dispersion trend (M2 excluded — failed establishment)
+# Tests monotonic prediction: dispersion decreases with planted richness
 no_m2 <- pca_data$Treatment != "M2"
 bd_no_m2 <- betadisper(dist(pca_mat[no_m2, ]), droplevels(pca_data$Treatment[no_m2]))
 richness <- case_when(
@@ -193,7 +195,6 @@ pca_plot <- ggplot(scores, aes(x = PC1, y = PC2)) +
                linewidth = 0.5, linetype = "dashed") +
   # Points
   geom_point(aes(color = Treatment, shape = Site), size = 2, alpha = 0.6) +
-  # Centroids removed for clarity +
   # Loading arrows
   geom_segment(data = loadings,
                aes(x = 0, y = 0, xend = PC1 * 3, yend = PC2 * 3),
@@ -210,7 +211,7 @@ pca_plot <- ggplot(scores, aes(x = PC1, y = PC2)) +
   geom_richtext(data = data.frame(x = -Inf, y = Inf, label = disp_html),
                 aes(x = x, y = y, label = label),
                 hjust = 0, vjust = 1, size = 3.2, color = "grey20",
-                fill = alpha("white", 0.9), label.colour = "grey50",
+                fill = alpha("white", 0.9), label.color = "grey50",
                 label.padding = unit(c(4, 5, 4, 5), "pt"),
                 label.r = unit(0, "pt"),
                 family = "Helvetica", inherit.aes = FALSE) +

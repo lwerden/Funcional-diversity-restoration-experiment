@@ -2,3 +2,9 @@
 *.jpeg
 *.svg
 *.png
+*.xlsx
+.DS_Store
+data/
+exploratory/
+release/
+Canopy-Cover-2026_files/

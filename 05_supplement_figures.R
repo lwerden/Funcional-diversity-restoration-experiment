@@ -1,3 +1,4 @@
+# Supplement figures: by-site bar plots with CLD and eta-squared
 library(dplyr)
 library(ggplot2)
 library(lme4)
@@ -8,8 +9,9 @@ library(multcomp)
 library(ineq)
 library(BIOMASS)
 library(DHARMa)
+library(patchwork)
 
-source("00_preprocess.R")
+source("01_preprocess.R")
 
 trt_colors <- c("M1" = "#D55E00", "M2" = "#E69F00",
                 "2SP" = "darkseagreen2", "6SP" = "darkseagreen", "12SP" = "darkolivegreen")
@@ -108,12 +110,6 @@ c_dat <- bio %>%
   summarise(carbon = sum(AGB_Mg) / 0.0225 * 0.47, .groups = "drop")
 site_bar(c_dat, "carbon", expression("Carbon (Mg C " * ha^-1 * ")"), "supp_carbon_by_site.jpeg", log_transform = TRUE)
 
-# Total BA
-ba <- TreeData %>% filter(!is.na(BA_year_3)) %>%
-  group_by(Site, Treatment, Plot_number) %>%
-  summarise(total_BA = sum(BA_year_3, na.rm = TRUE), .groups = "drop")
-site_bar(ba, "total_BA", expression("Total basal area (" * cm^2 * ")"), "supp_BA_by_site.jpeg", log_transform = TRUE)
-
 # Height Gini
 gini_ht <- TreeData %>% filter(!is.na(Height_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
@@ -202,18 +198,52 @@ p_surv <- ggplot(sm_surv, aes(x = Treatment, y = m, fill = Treatment)) +
 ggsave("supp_survival_by_site.jpeg", plot = p_surv, width = 8, height = 7, dpi = 300)
 cat("Saved: supp_survival_by_site.jpeg\n")
 
-# Inga individual BA by site
+# Inga individual performance — combined BA + height
 inga_ba <- TreeData %>%
   filter(Species == "Inga edulis", !is.na(BA_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarise(inga_BA = mean(BA_year_3, na.rm = TRUE), .groups = "drop")
-site_bar(inga_ba, "inga_BA", expression("Inga edulis mean BA (" * cm^2 * ")"), "supp_inga_BA_by_site.jpeg", log_transform = TRUE)
 
-# Inga individual height by site
 inga_ht <- TreeData %>%
   filter(Species == "Inga edulis", !is.na(Height_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarise(inga_height = mean(Height_year_3 / 100, na.rm = TRUE), .groups = "drop")
-site_bar(inga_ht, "inga_height", "Inga edulis mean height (m)", "supp_inga_height_by_site.jpeg")
+
+make_inga_panel <- function(data, val_col, ylab, log_transform = FALSE) {
+  data <- data %>% rename(val = !!val_col)
+  if (log_transform) {
+    m <- suppressWarnings(lmer(log(val) ~ Treatment * Site + (1 | Site:Plot_number), data = data))
+  } else {
+    m <- suppressWarnings(lmer(val ~ Treatment * Site + (1 | Site:Plot_number), data = data))
+  }
+  em <- emmeans(m, pairwise ~ Treatment | Site)
+  cld_df <- as.data.frame(cld(em$emmeans, Letters = letters, adjust = "tukey", alpha = 0.05, decreasing = TRUE))
+  sm <- data %>% group_by(Site, Treatment) %>%
+    summarise(m = mean(val, na.rm = TRUE), s = sd(val, na.rm = TRUE), .groups = "drop")
+  site_tops <- sm %>% group_by(Site) %>%
+    summarise(y_top = max(m + s, na.rm = TRUE) * 1.15, .groups = "drop")
+  cld_df <- cld_df %>% left_join(site_tops, by = "Site")
+
+  ggplot(sm, aes(x = Treatment, y = m, fill = Treatment)) +
+    geom_bar(stat = "identity") +
+    geom_jitter(data = data, aes(y = val), width = 0.2, size = 1, alpha = 0.4, color = "black") +
+    geom_errorbar(aes(ymin = pmax(m - s, 0), ymax = m + s), width = 0.2, linetype = "dashed", linewidth = 0.4) +
+    geom_text(data = cld_df, aes(y = y_top, label = .group), size = 3.5, fontface = "bold") +
+    scale_fill_manual(values = trt_colors, guide = "none") +
+    facet_wrap(~ Site, ncol = 2, scales = "free_y") +
+    labs(x = "Treatment", y = ylab) +
+    theme_classic() +
+    theme(strip.text = element_text(face = "bold", size = 9),
+          axis.text.x = element_text(size = 10, face = "bold"),
+          axis.text.y = element_text(size = 9),
+          axis.title = element_text(size = 11))
+}
+
+p_ba <- make_inga_panel(inga_ba, "inga_BA", expression("Mean BA (" * cm^2 * ")"), log_transform = TRUE)
+p_ht <- make_inga_panel(inga_ht, "inga_height", "Mean height (m)")
+p_inga <- p_ba / p_ht + plot_annotation(tag_levels = "a")
+
+ggsave("supp_inga_performance.png", plot = p_inga, width = 8, height = 12, dpi = 300, bg = "white")
+cat("Saved: supp_inga_performance.png\n")
 
 cat("\nAll supplement figures done.\n")

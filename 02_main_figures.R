@@ -1,18 +1,22 @@
+# Fig 2 (ecosystem outcomes) and Fig 3 (Gini heterogeneity) — pooled across sites
 library(dplyr)
 library(ggplot2)
 library(lme4)
 library(lmerTest)
 library(glmmTMB)
+library(car)
 library(emmeans)
 library(multcomp)
 library(ineq)
 library(BIOMASS)
 library(patchwork)
 
-source("00_preprocess.R")
+source("01_preprocess.R")
 
 trt_colors <- c("M1" = "#D55E00", "M2" = "#E69F00",
                 "2SP" = "darkseagreen2", "6SP" = "darkseagreen", "12SP" = "darkolivegreen")
+trt_labels <- c("M1" = "M1 (1)", "M2" = "M2 (1)", "2SP" = "2SP (2)",
+                "6SP" = "6SP (6)", "12SP" = "12SP (12)")
 
 CC3 <- CanopyCover %>% filter(Year == "3")
 
@@ -57,11 +61,12 @@ pooled_panel <- function(data, val_col, ylab, log_transform = FALSE) {
     geom_text(data = cld_df, aes(y = y_top, label = .group),
               size = 4.5, fontface = "bold", hjust = 0.5) +
     scale_fill_manual(values = trt_colors, guide = "none") +
+    scale_x_discrete(labels = trt_labels) +
     labs(x = NULL, y = ylab, subtitle = subtitle) +
     theme_classic() +
     theme(
       plot.subtitle = element_text(size = 10, color = "black"),
-      axis.text.x = element_text(size = 11, face = "bold"),
+      axis.text.x = element_text(size = 10, face = "bold"),
       axis.text.y = element_text(size = 10),
       axis.title = element_text(size = 12)
     )
@@ -134,11 +139,12 @@ p_surv <- ggplot(sm_surv, aes(x = Treatment, y = m, fill = Treatment)) +
   geom_text(data = cld_surv_pooled, aes(y = y_top_surv, label = .group),
             size = 4.5, fontface = "bold", hjust = 0.5) +
   scale_fill_manual(values = trt_colors, guide = "none") +
+  scale_x_discrete(labels = trt_labels) +
   labs(x = NULL, y = "Survival (%)", subtitle = subtitle_surv) +
   theme_classic() +
   theme(
     plot.subtitle = element_text(size = 9, color = "grey30"),
-    axis.text.x = element_text(size = 11, face = "bold"),
+    axis.text.x = element_text(size = 10, face = "bold"),
     axis.text.y = element_text(size = 10),
     axis.title = element_text(size = 12)
   )

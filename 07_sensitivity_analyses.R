@@ -1,13 +1,17 @@
+# Sensitivity analyses: LOO, permutation test, risk-return, temporal trajectory, replanting, mixed model
 library(dplyr)
 library(ggplot2)
 library(ineq)
 library(BIOMASS)
 library(vegan)
+library(lme4)
+library(lmerTest)
 library(patchwork)
 
-source("00_preprocess.R")
+source("01_preprocess.R")
 CC3 <- CanopyCover %>% filter(Year == "3")
 
+# Rebuild the same 6 plot-level metrics used in 05_synthesis_figures.R
 ht <- TreeData %>% filter(!is.na(Height_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarise(mean_height = mean(Height_year_3 / 100), .groups = "drop")
@@ -52,10 +56,10 @@ trt_colors <- c("M1" = "#D55E00", "2SP" = "darkseagreen2", "6SP" = "darkseagreen
 richness_map <- c("M1" = 1, "2SP" = 2, "6SP" = 6, "12SP" = 12)
 richness <- richness_map[as.character(pm_no_m2$Treatment)]
 
-bd <- betadisper(dist(mat_no_m2), pm_no_m2$Treatment)
+bd <- betadisper(dist(mat_no_m2), droplevels(pm_no_m2$Treatment))
 
 # ============================================================
-# A) LOO SENSITIVITY
+# A) LOO SENSITIVITY — drop each site, re-run richness-dispersion correlation
 # ============================================================
 sites <- unique(pm_no_m2$Site)
 loo_results <- data.frame()
@@ -65,7 +69,7 @@ for (drop_site in c("none", sites)) {
   } else {
     keep <- pm_no_m2$Site != drop_site
   }
-  bd_loo <- betadisper(dist(mat_no_m2[keep, ]), pm_no_m2$Treatment[keep])
+  bd_loo <- betadisper(dist(mat_no_m2[keep, ]), droplevels(pm_no_m2$Treatment[keep]))
   rich_loo <- richness[keep]
   ct <- suppressWarnings(cor.test(rich_loo, bd_loo$distances, method = "spearman"))
   loo_results <- rbind(loo_results, data.frame(
@@ -79,7 +83,8 @@ cat("Saved: supp_loo_sensitivity.csv\n")
 print(loo_results)
 
 # ============================================================
-# B) PERMUTATION LINEAR CONTRAST + NULL MODEL
+# B) PERMUTATION TEST — null model for richness-dispersion correlation
+# Permute richness labels 9999x, compute SES against null distribution
 # ============================================================
 set.seed(42)
 n_perm <- 9999
@@ -100,7 +105,7 @@ write.csv(perm_results, "supp_permutation_test.csv", row.names = FALSE)
 cat("Saved: supp_permutation_test.csv\n")
 
 # ============================================================
-# C) RISK-RETURN FRONTIER
+# C) RISK-RETURN FRONTIER — mean vs CV for each metric by treatment
 # ============================================================
 rr <- pm_no_m2 %>%
   group_by(Treatment) %>%
@@ -110,49 +115,23 @@ rr <- pm_no_m2 %>%
     Canopy_mean = mean(canopy_cover), Canopy_cv = sd(canopy_cover) / mean(canopy_cover) * 100,
     .groups = "drop")
 
-p_rr_carbon <- ggplot(rr, aes(x = Carbon_cv, y = Carbon_mean, color = Treatment)) +
-  geom_point(size = 5) +
-  geom_text(aes(label = Treatment), vjust = -1.2, fontface = "bold", size = 3.5, show.legend = FALSE) +
-  scale_color_manual(values = trt_colors, guide = "none") +
-  labs(x = "Cross-site variability (CV %)", y = expression("Mean carbon (Mg C " * ha^-1 * ")"),
-       subtitle = "Carbon") +
-  theme_minimal() + theme(plot.subtitle = element_text(face = "bold"))
-
-p_rr_height <- ggplot(rr, aes(x = Height_cv, y = Height_mean, color = Treatment)) +
-  geom_point(size = 5) +
-  geom_text(aes(label = Treatment), vjust = -1.2, fontface = "bold", size = 3.5, show.legend = FALSE) +
-  scale_color_manual(values = trt_colors, guide = "none") +
-  labs(x = "Cross-site variability (CV %)", y = "Mean height (m)",
-       subtitle = "Height") +
-  theme_minimal() + theme(plot.subtitle = element_text(face = "bold"))
-
-p_rr_canopy <- ggplot(rr, aes(x = Canopy_cv, y = Canopy_mean, color = Treatment)) +
-  geom_point(size = 5) +
-  geom_text(aes(label = Treatment), vjust = -1.2, fontface = "bold", size = 3.5, show.legend = FALSE) +
-  scale_color_manual(values = trt_colors, guide = "none") +
-  labs(x = "Cross-site variability (CV %)", y = "Mean canopy cover (%)",
-       subtitle = "Canopy cover") +
-  theme_minimal() + theme(plot.subtitle = element_text(face = "bold"))
-
 mv_rr <- data.frame(Treatment = names(bd$group.distances),
                      Dispersion = bd$group.distances,
                      Richness = richness_map[names(bd$group.distances)])
 
-p_rr_mv <- ggplot(mv_rr, aes(x = Dispersion, y = Richness, color = Treatment)) +
+p_rr <- ggplot(mv_rr, aes(x = Dispersion, y = Richness, color = Treatment)) +
   geom_point(size = 5) +
-  geom_text(aes(label = Treatment), hjust = -0.3, fontface = "bold", size = 3.5, show.legend = FALSE) +
+  geom_text(aes(label = Treatment), hjust = -0.3, fontface = "bold", size = 4, show.legend = FALSE) +
   scale_color_manual(values = trt_colors, guide = "none") +
-  labs(x = "Multivariate dispersion\n(distance to centroid)", y = "Planted species richness",
-       subtitle = "Portfolio effect") +
-  theme_minimal() + theme(plot.subtitle = element_text(face = "bold"))
+  labs(x = "Multivariate dispersion\n(distance to centroid)", y = "Planted species richness") +
+  theme_minimal()
 
-fig_rr <- (p_rr_carbon + p_rr_height) / (p_rr_canopy + p_rr_mv) +
-  plot_annotation(tag_levels = "a")
-ggsave("supp_risk_return.png", plot = fig_rr, width = 10, height = 8, dpi = 300, bg = "white")
+ggsave("supp_risk_return.png", plot = p_rr, width = 6, height = 5, dpi = 300, bg = "white")
 cat("Saved: supp_risk_return.png\n")
 
 # ============================================================
-# D) TEMPORAL DISPERSION TRAJECTORY
+# D) TEMPORAL TRAJECTORY — does dispersion-richness trend strengthen over years 1-3?
+# Only 3 sites have all 3 years (GAM planted last, only has year 3)
 # ============================================================
 temporal_sites <- c("FAB", "FCEA", "LLFS")
 temporal_results <- data.frame()
@@ -180,7 +159,7 @@ for (yr in 1:3) {
   yr_mat <- yr_data %>% select(mean_height, height_gini) %>% scale()
   yr_rich <- richness_map[as.character(yr_data$Treatment)]
 
-  bd_yr <- betadisper(dist(yr_mat), yr_data$Treatment)
+  bd_yr <- betadisper(dist(yr_mat), droplevels(yr_data$Treatment))
   ct_yr <- suppressWarnings(cor.test(yr_rich, bd_yr$distances, method = "spearman"))
 
   dists_yr <- bd_yr$group.distances
@@ -197,29 +176,12 @@ write.csv(temporal_results, "supp_temporal_dispersion.csv", row.names = FALSE)
 cat("Saved: supp_temporal_dispersion.csv\n")
 print(temporal_results)
 
-# Reshape for plotting
-temp_long <- temporal_results %>%
-  tidyr::pivot_longer(cols = c(M1_disp, SP2_disp, SP6_disp, SP12_disp),
-                      names_to = "Treatment", values_to = "Dispersion") %>%
-  mutate(Treatment = case_when(
-    Treatment == "M1_disp" ~ "M1", Treatment == "SP2_disp" ~ "2SP",
-    Treatment == "SP6_disp" ~ "6SP", Treatment == "SP12_disp" ~ "12SP"))
-
-p_temporal <- ggplot(temp_long, aes(x = Year, y = Dispersion, color = Treatment)) +
-  geom_line(linewidth = 1.2) + geom_point(size = 4) +
-  scale_color_manual(values = trt_colors) +
-  scale_x_continuous(breaks = 1:3, labels = paste("Year", 1:3)) +
-  labs(x = "Year after planting", y = "Multivariate dispersion\n(distance to centroid)",
-       subtitle = "Dispersion trajectory (FAB + FCEA + LLFS, height + height Gini)") +
-  theme_minimal() +
-  theme(plot.subtitle = element_text(face = "bold", size = 10))
-
-ggsave("supp_temporal_dispersion.png", plot = p_temporal, width = 7, height = 5, dpi = 300, bg = "white")
-cat("Saved: supp_temporal_dispersion.png\n")
+# Temporal dispersion figure dropped from supplement — results in Table S3E only
 
 # ============================================================
 # E) REPLANTING SENSITIVITY
 # ============================================================
+# Identify replanted trees: died year 1 or 2 but alive at year 3
 TreeData <- TreeData %>%
   mutate(is_replant = (Mortality_year_1 == 1 | Mortality_year_2 == 1) & !is.na(Height_year_3))
 TreeData$is_replant[is.na(TreeData$is_replant)] <- FALSE
@@ -230,7 +192,18 @@ cat(sprintf("Replants: %d of %d trees (%.1f%%)\n",
     sum(TreeData$is_replant), nrow(TreeData),
     sum(TreeData$is_replant) / nrow(TreeData) * 100))
 
-# Height Gini without replants
+# Height Gini WITH replants (full dataset baseline)
+ht_wr <- TreeData %>% filter(!is.na(Height_year_3), Treatment != "M2") %>%
+  group_by(Site, Treatment, Plot_number) %>%
+  summarise(height_gini = ineq(Height_year_3, type = "Gini"), .groups = "drop") %>%
+  filter(!is.nan(height_gini))
+
+m_gini_wr <- suppressWarnings(lmer(height_gini ~ Treatment * Site + (1 | Site:Plot_number), data = ht_wr))
+a_wr <- anova(m_gini_wr)
+eta_wr <- a_wr["Treatment", "F value"] * a_wr["Treatment", "NumDF"] /
+  (a_wr["Treatment", "F value"] * a_wr["Treatment", "NumDF"] + a_wr["Treatment", "DenDF"])
+
+# Height Gini WITHOUT replants
 ht_nr <- TD_norep %>% filter(!is.na(Height_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarise(height_gini = ineq(Height_year_3, type = "Gini"), .groups = "drop") %>%
@@ -272,20 +245,22 @@ bd_nr <- betadisper(dist(mat_nr), droplevels(pm_nr$Treatment))
 ct_nr <- suppressWarnings(cor.test(rich_nr, bd_nr$distances, method = "spearman"))
 
 # Compare
+ct_wr <- suppressWarnings(cor.test(richness, bd$distances, method = "spearman"))
 rep_compare <- data.frame(
   Analysis = c("Height Gini", "Height Gini", "Betadisper", "Betadisper"),
   Dataset = c("With replants", "Without replants", "With replants", "Without replants"),
   n_trees = c(nrow(TreeData), nrow(TD_norep), nrow(TreeData), nrow(TD_norep)),
   n_replants_excluded = c(0, sum(TreeData$is_replant), 0, sum(TreeData$is_replant)),
   Statistic = c(
-    round(a_nr["Treatment", "F value"], 1),  # placeholder, recalc with full
+    round(a_wr["Treatment", "F value"], 1),
     round(a_nr["Treatment", "F value"], 1),
-    round(ct1_rho <- suppressWarnings(cor.test(richness, bd$distances, method = "spearman"))$estimate, 3),
+    round(ct_wr$estimate, 3),
     round(ct_nr$estimate, 3)),
-  p_value = c(a_nr["Treatment", "Pr(>F)"], a_nr["Treatment", "Pr(>F)"],
-              ct1_rho_p <- suppressWarnings(cor.test(richness, bd$distances, method = "spearman"))$p.value,
+  p_value = c(a_wr["Treatment", "Pr(>F)"],
+              a_nr["Treatment", "Pr(>F)"],
+              ct_wr$p.value,
               ct_nr$p.value),
-  Effect_size = c(round(eta_nr, 3), round(eta_nr, 3),
+  Effect_size = c(round(eta_wr, 3), round(eta_nr, 3),
                   round(bd$group.distances["M1"], 2), round(bd_nr$group.distances["M1"], 2))
 )
 
@@ -296,6 +271,53 @@ cat(sprintf("  Betadisper rho: %.3f, p = %.4f (without replants)\n", ct_nr$estim
 cat(sprintf("  M1 disp: %.2f, 12SP disp: %.2f (without replants)\n",
     bd_nr$group.distances["M1"], bd_nr$group.distances["12SP"]))
 
-cat("\nAll sensitivity analyses done.\n")
+# ============================================================
+# F) MIXED-MODEL ROBUSTNESS — accounts for site-level clustering
+# Addresses potential pseudoreplication in the plot-level Spearman test
+# ============================================================
+bd_df <- data.frame(
+  distance = bd$distances,
+  richness = richness,
+  Site = pm_no_m2$Site,
+  Block = pm_no_m2$Plot_number,
+  Treatment = droplevels(pm_no_m2$Treatment)
+)
+
+mm_site <- lmer(distance ~ richness + (1 | Site), data = bd_df)
+mm_summary <- summary(mm_site)
+mm_coef <- coef(mm_summary)["richness", ]
+
+mm_full <- lmer(distance ~ richness + (1 | Site / Block), data = bd_df)
+mm_full_summary <- summary(mm_full)
+mm_full_coef <- coef(mm_full_summary)["richness", ]
+
+cat("\n=== MIXED-MODEL ROBUSTNESS (betadisper distances) ===\n")
+cat(sprintf("  Model: distance ~ richness + (1|Site)\n"))
+cat(sprintf("  Richness β = %.4f, t = %.2f, p = %.4f\n",
+    mm_coef["Estimate"], mm_coef["t value"], mm_coef["Pr(>|t|)"]))
+cat(sprintf("  Site variance: %.4f (SD = %.4f)\n",
+    as.numeric(VarCorr(mm_site)$Site), sqrt(as.numeric(VarCorr(mm_site)$Site))))
+cat(sprintf("\n  Model: distance ~ richness + (1|Site/Block)\n"))
+cat(sprintf("  Richness β = %.4f, t = %.2f, p = %.4f\n",
+    mm_full_coef["Estimate"], mm_full_coef["t value"], mm_full_coef["Pr(>|t|)"]))
+
+mm_results <- data.frame(
+  Model = c("distance ~ richness + (1|Site)",
+            "distance ~ richness + (1|Site/Block)",
+            "Spearman (no hierarchy)"),
+  Beta_or_rho = c(round(mm_coef["Estimate"], 4),
+                  round(mm_full_coef["Estimate"], 4),
+                  round(obs_rho, 4)),
+  t_or_S = c(round(mm_coef["t value"], 2),
+             round(mm_full_coef["t value"], 2),
+             NA),
+  p_value = c(round(mm_coef["Pr(>|t|)"], 4),
+              round(mm_full_coef["Pr(>|t|)"], 4),
+              round(suppressWarnings(cor.test(richness, bd$distances, method = "spearman"))$p.value, 4)),
+  n_plots = rep(nrow(bd_df), 3),
+  n_sites = rep(length(unique(bd_df$Site)), 3)
+)
+write.csv(mm_results, "supp_mixed_model_robustness.csv", row.names = FALSE)
+cat("Saved: supp_mixed_model_robustness.csv\n")
 
 cat("\nAll sensitivity analyses done.\n")

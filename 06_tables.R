@@ -1,13 +1,16 @@
+# Table 3 (ANOVA) and supplement tables (means, DHARMa, wood density)
 library(dplyr)
 library(lme4)
 library(lmerTest)
 library(glmmTMB)
+library(car)
 library(emmeans)
 library(ineq)
 library(BIOMASS)
 library(DHARMa)
+library(piecewiseSEM)
 
-source("00_preprocess.R")
+source("01_preprocess.R")
 
 CC3 <- CanopyCover %>% filter(Year == "3")
 
@@ -135,13 +138,10 @@ cat("Saved: supp_wood_density.csv\n")
 # ============================================================
 # TABLE S: SEM coefficients (both models)
 # ============================================================
-library(piecewiseSEM)
-
 base_data <- ht %>%
-  rename(mean_height_m = mean_height) %>%
   inner_join(c_dat %>% rename(C_Mg_ha = carbon), by = c("Site", "Treatment", "Plot_number")) %>%
   inner_join(gini_ht, by = c("Site", "Treatment", "Plot_number")) %>%
-  left_join(cc %>% rename(canopy_cover = canopy_cover), by = c("Site", "Treatment", "Plot_number")) %>%
+  left_join(cc, by = c("Site", "Treatment", "Plot_number")) %>%
   left_join(gini_cc, by = c("Site", "Treatment", "Plot_number")) %>%
   filter(!is.na(canopy_gini), !is.na(C_Mg_ha)) %>%
   mutate(

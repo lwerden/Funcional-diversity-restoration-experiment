@@ -1,3 +1,4 @@
+# Preprocessing: load raw data, fix errors, back-calculate DBH, attach wood density
 library(readxl)
 library(dplyr)
 

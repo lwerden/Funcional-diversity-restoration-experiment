@@ -1,5 +1,5 @@
-"Analysis","Dataset","n_trees","n_replants_excluded","F_or_rho","p_value","eta2p_or_M1_disp","X12SP_disp"
-"Height Gini","With replants",5760,0,200.7,3.1e-31,0.909,NA
-"Height Gini","Without replants",5291,469,199,4e-31,0.909,NA
-"Betadisper","With replants",5760,0,-0.237,0.02,2.01,1.56
-"Betadisper","Without replants",5291,469,-0.244,0.017,2.06,1.55
+"Analysis","Dataset","n_trees","n_replants_excluded","Statistic","p_value","Effect_size"
+"Height Gini","With replants",5760,0,199,3.95122928229622e-31,0.909
+"Height Gini","Without replants",5291,469,199,3.95122928229622e-31,0.909
+"Betadisper","With replants",5760,0,-0.272,0.00734342769780011,1.99
+"Betadisper","Without replants",5291,469,-0.244,0.0165459528416052,2.06

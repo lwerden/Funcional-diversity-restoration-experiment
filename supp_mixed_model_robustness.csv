@@ -1,0 +1,4 @@
+"Model","Beta_or_rho","t_or_S","p_value","n_plots","n_sites"
+"distance ~ richness + (1|Site)",-0.0404,-2.24,0.0273,96,4
+"distance ~ richness + (1|Site/Block)",-0.0404,-2.36,0.0211,96,4
+"Spearman (no hierarchy)",-0.272,NA,0.0073,96,4
