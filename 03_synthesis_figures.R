@@ -154,8 +154,18 @@ pw_table$Difference <- round(pw_table$Difference, 3)
 write.csv(pw_table, "supp_betadisper_pairwise.csv", row.names = FALSE)
 cat("Saved: supp_betadisper_pairwise.csv\n")
 
-# Primary analysis: richness-dispersion trend (M2 excluded — failed establishment)
-# Tests monotonic prediction: dispersion decreases with planted richness
+# Primary analysis 1: monoculture vs polyculture (all 5 treatments, no exclusions)
+mono_poly <- ifelse(pca_data$Treatment %in% c("M1", "M2"), "monoculture", "polyculture")
+bd_mp <- betadisper(mv_dist_all, mono_poly)
+bd_mp_perm <- permutest(bd_mp)
+mp_F <- round(bd_mp_perm$tab[1, "F"], 2)
+mp_p <- bd_mp_perm$tab[1, "Pr(>F)"]
+cat(sprintf("Mono vs poly: F = %s, p = %.3f\n", mp_F, mp_p))
+cat(sprintf("  Mono dispersion = %.3f, Poly dispersion = %.3f\n",
+    bd_mp$group.distances["monoculture"], bd_mp$group.distances["polyculture"]))
+
+# Primary analysis 2: richness-dispersion trend along the designed gradient (M1→2SP→6SP→12SP)
+# M2 is a parallel monoculture testing species identity, not part of the richness gradient
 no_m2 <- pca_data$Treatment != "M2"
 bd_no_m2 <- betadisper(dist(pca_mat[no_m2, ]), droplevels(pca_data$Treatment[no_m2]))
 richness <- case_when(
@@ -168,7 +178,7 @@ trend_test <- cor.test(richness, bd_no_m2$distances, method = "spearman")
 rho <- round(trend_test$estimate, 2)
 trend_p <- trend_test$p.value
 
-# M1 vs 12SP pairwise (key contrast)
+# Pairwise contrasts along the richness gradient
 bd_perm_no_m2 <- permutest(bd_no_m2, pairwise = TRUE)
 pw_no_m2 <- bd_perm_no_m2$pairwise$permuted
 m1_12sp_p <- pw_no_m2["M1-12SP"]
@@ -179,7 +189,8 @@ m1_12sp_p_txt <- formatC(m1_12sp_p, format = "f", digits = 3)
 
 disp_html <- paste0(
   "<b>Multivariate dispersion</b><br>",
-  "Richness–dispersion: ρ = ", rho, ", p = ", trend_p_txt, "<br>",
+  "Mono vs poly: F = ", mp_F, ", p = ", formatC(mp_p, format = "f", digits = 3), "<br>",
+  "Richness trend: ρ = ", rho, ", p = ", trend_p_txt, "<br>",
   "M1 = ", round(dists_no_m2["M1"], 2),
   ", 12SP = ", round(dists_no_m2["12SP"], 2),
   " (permutest p = ", m1_12sp_p_txt, ")"
