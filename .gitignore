@@ -1,7 +1,5 @@
 *.rds
-*.jpeg
 *.svg
-*.png
 *.xlsx
 .DS_Store
 data/
