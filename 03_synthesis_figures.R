@@ -236,6 +236,15 @@ pca_plot <- ggplot(scores, aes(x = PC1, y = PC2)) +
                 label.padding = unit(c(5, 6, 5, 6), "pt"),
                 label.r = unit(0, "pt"),
                 family = "Helvetica", inherit.aes = FALSE) +
+  annotate("text", x = Inf, y = -Inf, label = "Heterogeneity →",
+           hjust = 1.1, vjust = -0.5, size = 3.5, color = "grey40",
+           fontface = "italic", family = "Helvetica") +
+  annotate("text", x = -Inf, y = -Inf, label = "← Productivity",
+           hjust = -0.1, vjust = -0.5, size = 3.5, color = "grey40",
+           fontface = "italic", family = "Helvetica") +
+  annotate("text", x = -7.5, y = -2.5, label = "Structural\ncomplexity ↓",
+           hjust = 0.5, vjust = 0.5, size = 3.2, color = "grey40",
+           fontface = "italic", family = "Helvetica") +
   labs(x = paste0("PC1 (", round(ve[1] * 100, 1), "%)"),
        y = paste0("PC2 (", round(ve[2] * 100, 1), "%)"),
        shape = "Site", tag = "b") +
