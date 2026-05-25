@@ -152,8 +152,8 @@ p_surv <- ggplot(sm_surv, aes(x = Treatment, y = m, fill = Treatment)) +
 fig2 <- (p_ht + p_cc) / (p_carbon + p_surv) +
   plot_annotation(tag_levels = "a")
 
-ggsave("fig2_height_canopy_carbon.png", plot = fig2, width = 10, height = 9, dpi = 300, bg = "white")
-cat("Saved: fig2_height_canopy_carbon.png\n")
+ggsave("Fig2_ecosystem_outcomes.png", plot = fig2, width = 10, height = 9, dpi = 300, bg = "white")
+cat("Saved: Fig2_ecosystem_outcomes.png\n")
 
 # ============================================================
 # Fig 3: Height Gini + Canopy Gini + Carbon Gini (pooled)
@@ -182,5 +182,5 @@ fig3 <- p_gini_ht + p_gini_cc + p_gini_c +
   plot_layout(ncol = 3) +
   plot_annotation(tag_levels = "a")
 
-ggsave("fig3_gini.png", plot = fig3, width = 14, height = 5, dpi = 300, bg = "white")
-cat("Saved: fig3_gini.png\n")
+ggsave("Fig3_structural_heterogeneity.png", plot = fig3, width = 14, height = 5, dpi = 300, bg = "white")
+cat("Saved: Fig3_structural_heterogeneity.png\n")

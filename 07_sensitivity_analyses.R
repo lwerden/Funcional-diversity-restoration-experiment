@@ -131,8 +131,9 @@ p_rr <- ggplot(mv_rr, aes(x = Dispersion, y = Richness, color = Treatment)) +
   labs(x = "Multivariate dispersion\n(distance to centroid)", y = "Planted species richness") +
   theme_minimal()
 
+# Dropped from supplement (redundant with Fig 4b); retained for reference
 ggsave("supp_risk_return.png", plot = p_rr, width = 6, height = 5, dpi = 300, bg = "white")
-cat("Saved: supp_risk_return.png\n")
+cat("Saved: supp_risk_return.png (not in supplement)\n")
 
 # ============================================================
 # D) TEMPORAL TRAJECTORY — does dispersion-richness trend strengthen over years 1-3?

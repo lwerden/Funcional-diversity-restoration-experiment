@@ -276,6 +276,6 @@ pca_final <- pca_plot +
   )
 
 fig4 <- radar_gg + pca_final + plot_layout(widths = c(1, 1.2))
-ggsave("fig4_synthesis.png", plot = fig4, width = 13, height = 7, dpi = 300, bg = "white")
+ggsave("Fig4_multivariate_synthesis.png", plot = fig4, width = 13, height = 7, dpi = 300, bg = "white")
 file.remove("fig4a_radar.png")
-cat("Saved: fig4_synthesis.png\n")
+cat("Saved: Fig4_multivariate_synthesis.png\n")

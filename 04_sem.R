@@ -158,7 +158,7 @@ nodes_b <- data.frame(
   r2 = c(NA, sem_b_summary$R2$Conditional[1], sem_b_summary$R2$Conditional[2],
          sem_b_summary$R2$Conditional[3], sem_b_summary$R2$Conditional[4]))
 
-make_sem_fig(sem_b_summary, nodes_b, "log_richness", "fig5_sem.png")
+make_sem_fig(sem_b_summary, nodes_b, "log_richness", "Fig5_SEM.png")
 
 # ============================================================
 # SEM A: Inga proportion, all treatments — SUPPLEMENT
@@ -187,4 +187,4 @@ nodes_a <- data.frame(
   r2 = c(NA, sem_a_summary$R2$Conditional[1], sem_a_summary$R2$Conditional[2],
          sem_a_summary$R2$Conditional[3], sem_a_summary$R2$Conditional[4]))
 
-make_sem_fig(sem_a_summary, nodes_a, "inga_prop", "supp_sem_inga.png")
+make_sem_fig(sem_a_summary, nodes_a, "inga_prop", "FigS11_SEM_inga_proportion.png")

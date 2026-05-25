@@ -93,13 +93,13 @@ site_bar <- function(data, val_col, ylab, filename, log_transform = FALSE) {
 ht <- TreeData %>% filter(!is.na(Height_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarise(mean_height = mean(Height_year_3 / 100), .groups = "drop")
-site_bar(ht, "mean_height", "Mean height (m)", "supp_height_by_site.jpeg")
+site_bar(ht, "mean_height", "Mean height (m)", "FigS3_height_by_site.jpeg")
 
 # Canopy cover
 cc <- CC3 %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarise(canopy_cover = mean(Percent_canopy_cover, na.rm = TRUE), .groups = "drop")
-site_bar(cc, "canopy_cover", "Canopy cover (%)", "supp_canopy_cover_by_site.jpeg")
+site_bar(cc, "canopy_cover", "Canopy cover (%)", "FigS4_canopy_cover_by_site.jpeg")
 
 # Carbon
 bio <- TreeData %>%
@@ -108,21 +108,21 @@ bio$AGB_Mg <- computeAGB(D = bio$DBH_year_3, WD = bio$WD, H = bio$Height_year_3 
 c_dat <- bio %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarise(carbon = sum(AGB_Mg) / 0.0225 * 0.47, .groups = "drop")
-site_bar(c_dat, "carbon", expression("Carbon (Mg C " * ha^-1 * ")"), "supp_carbon_by_site.jpeg", log_transform = TRUE)
+site_bar(c_dat, "carbon", expression("Carbon (Mg C " * ha^-1 * ")"), "FigS5_carbon_by_site.jpeg", log_transform = TRUE)
 
 # Height Gini
 gini_ht <- TreeData %>% filter(!is.na(Height_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarize(height_gini = ineq(Height_year_3, type = "Gini"), .groups = "drop") %>%
   filter(!is.nan(height_gini))
-site_bar(gini_ht, "height_gini", "Gini coefficient of height", "supp_gini_height_by_site.jpeg")
+site_bar(gini_ht, "height_gini", "Gini coefficient of height", "FigS7_height_gini_by_site.jpeg")
 
 # Canopy Gini
 gini_cc <- CC3 %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarize(canopy_gini = ineq(Percent_canopy_cover, type = "Gini"), .groups = "drop") %>%
   filter(!is.nan(canopy_gini))
-site_bar(gini_cc, "canopy_gini", "Gini coefficient of canopy cover", "supp_gini_canopy_by_site.jpeg")
+site_bar(gini_cc, "canopy_gini", "Gini coefficient of canopy cover", "FigS8_canopy_gini_by_site.jpeg")
 
 # Carbon Gini
 bio$C_kg <- bio$AGB_Mg * 1000 * 0.47
@@ -130,7 +130,7 @@ carbon_gini <- bio %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarize(carbon_gini = ineq(C_kg, type = "Gini"), .groups = "drop") %>%
   filter(!is.nan(carbon_gini))
-site_bar(carbon_gini, "carbon_gini", "Gini coefficient of carbon", "supp_gini_carbon_by_site.jpeg")
+site_bar(carbon_gini, "carbon_gini", "Gini coefficient of carbon", "FigS9_carbon_gini_by_site.jpeg")
 
 # Survival — binomial GLMM on plot-level alive/dead counts
 surv_counts <- TreeData %>%
@@ -195,8 +195,8 @@ p_surv <- ggplot(sm_surv, aes(x = Treatment, y = m, fill = Treatment)) +
     axis.title = element_text(size = 12)
   )
 
-ggsave("supp_survival_by_site.jpeg", plot = p_surv, width = 8, height = 7, dpi = 300)
-cat("Saved: supp_survival_by_site.jpeg\n")
+ggsave("FigS6_survival_by_site.jpeg", plot = p_surv, width = 8, height = 7, dpi = 300)
+cat("Saved: FigS6_survival_by_site.jpeg\n")
 
 # Inga individual performance — combined BA + height
 inga_ba <- TreeData %>%
@@ -243,7 +243,7 @@ p_ba <- make_inga_panel(inga_ba, "inga_BA", expression("Mean BA (" * cm^2 * ")")
 p_ht <- make_inga_panel(inga_ht, "inga_height", "Mean height (m)")
 p_inga <- p_ba / p_ht + plot_annotation(tag_levels = "a")
 
-ggsave("supp_inga_performance.png", plot = p_inga, width = 8, height = 12, dpi = 300, bg = "white")
-cat("Saved: supp_inga_performance.png\n")
+ggsave("FigS10_inga_performance.png", plot = p_inga, width = 8, height = 12, dpi = 300, bg = "white")
+cat("Saved: FigS10_inga_performance.png\n")
 
 cat("\nAll supplement figures done.\n")
