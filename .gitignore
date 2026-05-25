@@ -2,7 +2,9 @@
 *.svg
 *.xlsx
 .DS_Store
-data/
+data/*
+!data/traits/
+!data/traits/**
 exploratory/
 release/
 Canopy-Cover-2026_files/

@@ -1,0 +1,202 @@
+---
+title: "PCA of nursery species pools"
+author: "Leland Werden"
+date: "2025-05-25"
+output: html_document
+---
+
+### Load packages
+```{r}
+library(tidyverse)
+library(ggrepel)
+library(patchwork)
+```
+
+### Read in data
+```{r}
+traits_2022 <- read_csv("data/traits/2022_imputed_traits_both.csv")
+
+# LLFS and FCEA nursery (Santa Cecilia) — all traits including nFix and dispersal
+traits_all_SC <- traits_2022 %>%
+  filter(where == "Santa Cecilia")
+
+# FAB nursery (Finca Aguas Buenas) — all traits including nFix and dispersal
+traits_all_FAB <- traits_2022 %>%
+  filter(where == "Finca Aguas Buenas")
+
+# Continuous traits only for PCA
+traits_SC <- traits_2022 %>%
+  filter(where == "Santa Cecilia") %>%
+  column_to_rownames(var = "spp") %>%
+  select(-c(rowID:Selection))
+
+traits_FAB <- traits_2022 %>%
+  filter(where == "Finca Aguas Buenas") %>%
+  column_to_rownames(var = "spp") %>%
+  select(-c(rowID:Selection))
+
+# La Gamba nursery — read and align column names to match SC/FAB
+traits_all_GAM <- read_csv("data/traits/laGamba_traits_final.csv") %>%
+  mutate(
+    nFix = case_when(
+      nFix == "nFix" ~ "N-fixer",
+      nFix == "non-fixer" ~ "Non-fixer"
+    ),
+    dispersal = case_when(
+      dispersal == "animal_fleshy" ~ "Animal (fleshy fruit)",
+      dispersal == "animal" ~ "Animal (non-fleshy fruit)",
+      dispersal == "other" ~ "Other"
+    )
+  )
+
+traits_GAM <- traits_all_GAM %>%
+  column_to_rownames(var = "spp") %>%
+  transmute(
+    `Bark thickness` = `Bark thickness`,
+    `Conduit diameter` = `Stem conduit diameter`,
+    `Crown diameter` = `Crown diameter`,
+    `Crown height` = `Crown height`,
+    `Leaf area` = `Leaf area`,
+    `Leaf density` = `Leaf density`,
+    `Leaf K` = `Leaf K per mass`,
+    `Leaf N` = `Leaf N per mass`,
+    `Leaf P` = `Leaf P per mass`,
+    `Leaf thickness` = `Leaf thickness`,
+    `Leaf Vcmax` = `Leaf Vcmax per dry mass`,
+    `Root depth` = `Root depth`,
+    `Seed dry mass` = `Seed dry mass`,
+    `Specific leaf area` = `Specific leaf area`,
+    `Stem diameter` = `Stem diameter`,
+    `Stomatal conductance` = `Stomatal conductance`,
+    `Tree height` = `Tree height`,
+    `Wood density` = `Wood density`
+  )
+```
+
+### Helper function for PCA biplot
+```{r}
+make_pca_biplot <- function(traits_pca, traits_meta, title_text, show_spp = FALSE) {
+  pca_result <- prcomp(traits_pca, scale. = TRUE)
+
+  var_explained <- summary(pca_result)$importance[2, 1:2] * 100
+
+  scores <- as.data.frame(pca_result$x)
+  scores$nFix <- traits_meta$nFix
+  scores$seed_dispersal <- traits_meta$dispersal
+  scores$spp <- rownames(traits_pca)
+
+  loadings <- as.data.frame(pca_result$rotation)
+  loadings$var <- rownames(loadings)
+
+  arrow_scale <- 10
+
+  p <- ggplot(scores, aes(x = PC1, y = PC2)) +
+    geom_point(aes(fill = seed_dispersal, shape = nFix),
+               size = 4, stroke = 0.7, color = "black") +
+    scale_shape_manual(
+      name = "N-fixing status",
+      values = c("Non-fixer" = 21, "N-fixer" = 24)
+    ) +
+    scale_fill_manual(
+      name = "Seed dispersal mode",
+      values = c(
+        "Animal (fleshy fruit)" = "#1f77b4",
+        "Animal (non-fleshy fruit)" = "#ff7f0e",
+        "Other" = "#2ca02c"
+      ),
+      guide = guide_legend(
+        override.aes = list(shape = 21, color = "black", size = 4)
+      )
+    ) +
+    geom_segment(data = loadings,
+                 aes(x = 0, y = 0, xend = PC1 * arrow_scale, yend = PC2 * arrow_scale),
+                 arrow = arrow(length = unit(0.25, "cm")),
+                 color = "gray30") +
+    geom_text_repel(data = loadings,
+                    aes(x = PC1 * arrow_scale, y = PC2 * arrow_scale, label = var),
+                    size = 4, color = "gray30") +
+    labs(
+      title = title_text,
+      x = sprintf("PC1 (%.1f%%)", var_explained[1]),
+      y = sprintf("PC2 (%.1f%%)", var_explained[2])
+    ) +
+    theme_minimal()
+
+  if (show_spp) {
+    p <- p +
+      geom_text_repel(aes(label = spp),
+                      size = 2.2, color = "gray40", max.overlaps = 50,
+                      segment.color = "gray70", segment.size = 0.3,
+                      min.segment.length = 0.2)
+  }
+
+  p
+}
+```
+
+### Build individual panels
+```{r}
+plot_SC <- make_pca_biplot(traits_SC, traits_all_SC, "LLFS and FCEA nursery species pool")
+plot_FAB <- make_pca_biplot(traits_FAB, traits_all_FAB, "FAB nursery species pool")
+plot_GAM <- make_pca_biplot(traits_GAM, traits_all_GAM, "GAM nursery species pool")
+```
+
+### Combined 3-panel plot
+```{r, fig.width=16, fig.height=6}
+plot_SC_leg <- plot_SC +
+  geom_point(aes(shape = nFix, fill = seed_dispersal), size = 4, stroke = 0.7, color = "black") +
+  theme(legend.position = "bottom")
+
+plot_FAB_noleg <- plot_FAB +
+  geom_point(aes(shape = nFix, fill = seed_dispersal), size = 4, stroke = 0.7, color = "black") +
+  theme(legend.position = "none")
+
+plot_GAM_noleg <- plot_GAM +
+  geom_point(aes(shape = nFix, fill = seed_dispersal), size = 4, stroke = 0.7, color = "black") +
+  theme(legend.position = "none")
+
+combined_plot <- plot_SC_leg + plot_FAB_noleg + plot_GAM_noleg +
+  plot_layout(guides = "collect") &
+  theme(
+    legend.position = "bottom",
+    legend.box = "vertical",
+    legend.title = element_text(face = "bold", size = 11),
+    legend.text = element_text(size = 11)
+  )
+
+combined_plot
+
+ggsave("plot.PCA.final.pdf", combined_plot, device = "pdf", width = 16, height = 6)
+```
+
+### Combined 3-panel plot with species codes
+```{r, fig.width=16, fig.height=7}
+plot_SC_spp <- make_pca_biplot(traits_SC, traits_all_SC, "LLFS and FCEA nursery species pool", show_spp = TRUE)
+plot_FAB_spp <- make_pca_biplot(traits_FAB, traits_all_FAB, "FAB nursery species pool", show_spp = TRUE)
+plot_GAM_spp <- make_pca_biplot(traits_GAM, traits_all_GAM, "GAM nursery species pool", show_spp = TRUE)
+
+plot_SC_spp_leg <- plot_SC_spp +
+  geom_point(aes(shape = nFix, fill = seed_dispersal), size = 4, stroke = 0.7, color = "black") +
+  theme(legend.position = "bottom")
+
+plot_FAB_spp_noleg <- plot_FAB_spp +
+  geom_point(aes(shape = nFix, fill = seed_dispersal), size = 4, stroke = 0.7, color = "black") +
+  theme(legend.position = "none")
+
+plot_GAM_spp_noleg <- plot_GAM_spp +
+  geom_point(aes(shape = nFix, fill = seed_dispersal), size = 4, stroke = 0.7, color = "black") +
+  theme(legend.position = "none")
+
+combined_plot_spp <- plot_SC_spp_leg + plot_FAB_spp_noleg + plot_GAM_spp_noleg +
+  plot_layout(guides = "collect") &
+  theme(
+    legend.position = "bottom",
+    legend.box = "vertical",
+    legend.title = element_text(face = "bold", size = 11),
+    legend.text = element_text(size = 11)
+  )
+
+combined_plot_spp
+
+ggsave("plot.PCA.final.spp_labels.pdf", combined_plot_spp, device = "pdf", width = 16, height = 7)
+```
