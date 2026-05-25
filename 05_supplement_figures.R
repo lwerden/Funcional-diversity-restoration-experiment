@@ -70,7 +70,7 @@ site_bar <- function(data, val_col, ylab, filename, log_transform = FALSE) {
     geom_text(data = cld_df, aes(y = y_top, label = .group),
               size = 4, fontface = "bold", hjust = 0.5) +
     scale_fill_manual(values = trt_colors, guide = "none") +
-    facet_wrap(~ Site, ncol = 2, scales = "free_y",
+    facet_wrap(~ Site, ncol = 2, scales = "fixed",
                labeller = labeller(Site = strip_labs)) +
     labs(x = "Treatment", y = ylab) +
     theme_classic() +
@@ -184,7 +184,7 @@ p_surv <- ggplot(sm_surv, aes(x = Treatment, y = m, fill = Treatment)) +
   geom_text(data = cld_surv, aes(y = y_top, label = .group),
             size = 4, fontface = "bold", hjust = 0.5) +
   scale_fill_manual(values = trt_colors, guide = "none") +
-  facet_wrap(~ Site, ncol = 2, scales = "free_y",
+  facet_wrap(~ Site, ncol = 2, scales = "fixed",
              labeller = labeller(Site = strip_labs_surv)) +
   labs(x = "Treatment", y = "Survival (%)") +
   theme_classic() +
@@ -230,7 +230,7 @@ make_inga_panel <- function(data, val_col, ylab, log_transform = FALSE) {
     geom_errorbar(aes(ymin = pmax(m - s, 0), ymax = m + s), width = 0.2, linetype = "dashed", linewidth = 0.4) +
     geom_text(data = cld_df, aes(y = y_top, label = .group), size = 3.5, fontface = "bold") +
     scale_fill_manual(values = trt_colors, guide = "none") +
-    facet_wrap(~ Site, ncol = 2, scales = "free_y") +
+    facet_wrap(~ Site, ncol = 2, scales = "fixed") +
     labs(x = "Treatment", y = ylab) +
     theme_classic() +
     theme(strip.text = element_text(face = "bold", size = 9),
