@@ -11,7 +11,7 @@ library(patchwork)
 source("01_preprocess.R")
 CC3 <- CanopyCover %>% filter(Year == "3")
 
-# Rebuild the same 6 plot-level metrics used in 05_synthesis_figures.R
+# Rebuild the same 7 plot-level metrics used in 03_synthesis_figures.R
 ht <- TreeData %>% filter(!is.na(Height_year_3)) %>%
   group_by(Site, Treatment, Plot_number) %>%
   summarise(mean_height = mean(Height_year_3 / 100), .groups = "drop")
@@ -36,16 +36,21 @@ cc_plot <- CC3 %>% group_by(Site, Treatment, Plot_number) %>%
 gini_cc <- CC3 %>% group_by(Site, Treatment, Plot_number) %>%
   summarize(canopy_gini = ineq(Percent_canopy_cover, type = "Gini"), .groups = "drop") %>% filter(!is.nan(canopy_gini))
 
+surv_plot <- TreeData %>%
+  group_by(Site, Treatment, Plot_number) %>%
+  summarise(survival = sum(!is.na(Height_year_3)) / n(), .groups = "drop")
+
 pm <- ht %>%
   inner_join(c_plot, by = c("Site", "Treatment", "Plot_number")) %>%
   inner_join(gini_ht, by = c("Site", "Treatment", "Plot_number")) %>%
   inner_join(carbon_gini, by = c("Site", "Treatment", "Plot_number")) %>%
   left_join(cc_plot, by = c("Site", "Treatment", "Plot_number")) %>%
   left_join(gini_cc, by = c("Site", "Treatment", "Plot_number")) %>%
-  filter(!is.na(canopy_gini))
+  left_join(surv_plot, by = c("Site", "Treatment", "Plot_number")) %>%
+  filter(!is.na(canopy_gini), !is.na(survival))
 
 pca_mat <- pm %>%
-  select(mean_height, C_Mg_ha, canopy_cover, height_gini, canopy_gini, carbon_gini) %>%
+  select(mean_height, C_Mg_ha, canopy_cover, height_gini, canopy_gini, carbon_gini, survival) %>%
   scale()
 
 no_m2 <- pm$Treatment != "M2"
@@ -231,15 +236,20 @@ c_nr <- bio_nr %>% group_by(Site, Treatment, Plot_number) %>%
 cg_nr <- bio_nr %>% group_by(Site, Treatment, Plot_number) %>%
   summarize(carbon_gini = ineq(C_kg, type = "Gini"), .groups = "drop") %>% filter(!is.nan(carbon_gini))
 
+surv_nr <- TD_norep %>%
+  group_by(Site, Treatment, Plot_number) %>%
+  summarise(survival = sum(!is.na(Height_year_3)) / n(), .groups = "drop")
+
 pm_nr <- ht_nr2 %>%
   inner_join(c_nr, by = c("Site", "Treatment", "Plot_number")) %>%
   inner_join(gini_ht_nr, by = c("Site", "Treatment", "Plot_number")) %>%
   inner_join(cg_nr, by = c("Site", "Treatment", "Plot_number")) %>%
   left_join(cc_plot, by = c("Site", "Treatment", "Plot_number")) %>%
   left_join(gini_cc, by = c("Site", "Treatment", "Plot_number")) %>%
-  filter(!is.na(canopy_gini), Treatment != "M2")
+  left_join(surv_nr, by = c("Site", "Treatment", "Plot_number")) %>%
+  filter(!is.na(canopy_gini), !is.na(survival), Treatment != "M2")
 
-mat_nr <- pm_nr %>% select(mean_height, C_Mg_ha, canopy_cover, height_gini, canopy_gini, carbon_gini) %>% scale()
+mat_nr <- pm_nr %>% select(mean_height, C_Mg_ha, canopy_cover, height_gini, canopy_gini, carbon_gini, survival) %>% scale()
 rich_nr <- richness_map[as.character(pm_nr$Treatment)]
 bd_nr <- betadisper(dist(mat_nr), droplevels(pm_nr$Treatment))
 ct_nr <- suppressWarnings(cor.test(rich_nr, bd_nr$distances, method = "spearman"))

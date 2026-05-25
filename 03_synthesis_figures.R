@@ -19,7 +19,7 @@ trt_colors_no_m2 <- c("M1" = "#D55E00",
                        "2SP" = "darkseagreen2", "6SP" = "darkseagreen", "12SP" = "darkolivegreen")
 
 # ============================================================
-# Compute plot-level metrics (6 variables for PCA and betadisper)
+# Compute plot-level metrics (7 variables for PCA and betadisper)
 # ============================================================
 # Mean height per plot (cm -> m)
 ht_plot <- TreeData %>%
@@ -61,14 +61,20 @@ gini_cc <- CanopyCover %>%
   summarize(canopy_gini = ineq(Percent_canopy_cover, type = "Gini"), .groups = "drop") %>%
   filter(!is.nan(canopy_gini))
 
-# Join all 6 metrics into one plot-level dataframe
+# Plot-level survival (proportion alive)
+surv_plot <- TreeData %>%
+  group_by(Site, Treatment, Plot_number) %>%
+  summarise(survival = sum(!is.na(Height_year_3)) / n(), .groups = "drop")
+
+# Join all 7 metrics into one plot-level dataframe
 plot_metrics <- ht_plot %>%
   inner_join(c_plot, by = c("Site", "Treatment", "Plot_number")) %>%
   inner_join(gini_ht, by = c("Site", "Treatment", "Plot_number")) %>%
   inner_join(carbon_gini, by = c("Site", "Treatment", "Plot_number")) %>%
   left_join(cc_plot, by = c("Site", "Treatment", "Plot_number")) %>%
   left_join(gini_cc, by = c("Site", "Treatment", "Plot_number")) %>%
-  filter(!is.na(canopy_gini))
+  left_join(surv_plot, by = c("Site", "Treatment", "Plot_number")) %>%
+  filter(!is.na(canopy_gini), !is.na(survival))
 
 # ============================================================
 # RADAR PLOT helper
@@ -79,6 +85,7 @@ make_radar <- function(data, colors, filename) {
     summarise(
       `Carbon\n(Mg C ha⁻¹)` = mean(C_Mg_ha),
       `Canopy\ncover (%)` = mean(canopy_cover),
+      `Survival` = mean(survival),
       `Height\nGini` = mean(height_gini),
       `Carbon\nGini` = mean(carbon_gini),
       `Canopy\nGini` = mean(canopy_gini),
@@ -88,8 +95,8 @@ make_radar <- function(data, colors, filename) {
   treatments <- as.character(radar_data$Treatment)
   radar_norm <- radar_data %>%
     select(-Treatment) %>%
-    mutate(across(everything(), ~ (. - min(.)) / (max(.) - min(.))))
-  radar_fmsb <- rbind(rep(1, 6), rep(0, 6), radar_norm)
+    mutate(across(everything(), ~ . / max(.)))
+  radar_fmsb <- rbind(rep(1, 7), rep(0, 7), radar_norm)
 
   png(filename, width = 6, height = 6, units = "in", res = 300)
   par(mar = c(1, 1.5, 2, 1.5), family = "Helvetica")
@@ -114,10 +121,10 @@ make_radar(plot_metrics, trt_colors_all, "fig4a_radar.png")
 pca_data <- plot_metrics
 
 pca_mat <- pca_data %>%
-  select(mean_height, C_Mg_ha, canopy_cover, height_gini, canopy_gini, carbon_gini) %>%
+  select(mean_height, C_Mg_ha, canopy_cover, height_gini, canopy_gini, carbon_gini, survival) %>%
   scale()
 colnames(pca_mat) <- c("Mean height (m)", "Carbon\n(Mg C ha⁻¹)", "Canopy\ncover (%)",
-                        "Height Gini", "Canopy Gini", "Carbon Gini")
+                        "Height Gini", "Canopy Gini", "Carbon Gini", "Survival")
 pca_result <- prcomp(pca_mat)
 ve <- summary(pca_result)$importance[2, ]
 
@@ -128,7 +135,7 @@ scores$Site <- pca_data$Site
 loadings <- as.data.frame(pca_result$rotation[, 1:2])
 loadings$Variable <- rownames(loadings)
 
-# Multivariate dispersion (betadisper) on full 6-variable space
+# Multivariate dispersion (betadisper) on full 7-variable space
 mv_dist_all <- dist(pca_mat)
 bd_all <- betadisper(mv_dist_all, pca_data$Treatment)
 bd_perm_all <- permutest(bd_all, pairwise = TRUE)
@@ -186,14 +193,17 @@ dists_no_m2 <- bd_no_m2$group.distances
 
 trend_p_txt <- ifelse(trend_p < 0.001, "< 0.001", formatC(trend_p, format = "f", digits = 3))
 m1_12sp_p_txt <- formatC(m1_12sp_p, format = "f", digits = 3)
+disp_pct <- round((dists_no_m2["M1"] / dists_no_m2["12SP"] - 1) * 100)
 
 disp_html <- paste0(
+  "<span style='font-family:Helvetica;font-size:11pt'>",
   "<b>Multivariate dispersion</b><br>",
-  "Mono vs poly: F = ", mp_F, ", p = ", formatC(mp_p, format = "f", digits = 3), "<br>",
-  "Richness trend: ρ = ", rho, ", p = ", trend_p_txt, "<br>",
-  "M1 = ", round(dists_no_m2["M1"], 2),
-  ", 12SP = ", round(dists_no_m2["12SP"], 2),
-  " (permutest p = ", m1_12sp_p_txt, ")"
+  "M1 & M2 vs 2SP, 6SP & 12SP: <i>F</i> = ", mp_F,
+  ", <i>p</i> = ", formatC(mp_p, format = "f", digits = 3), "<br>",
+  "Dispersion decreases with richness: ρ = ", rho,
+  ", <i>p</i> ", trend_p_txt, "<br>",
+  "M1 ", disp_pct, "% more dispersed than 12SP (<i>p</i> = ", m1_12sp_p_txt, ")",
+  "</span>"
 )
 
 pca_plot <- ggplot(scores, aes(x = PC1, y = PC2)) +
@@ -221,9 +231,9 @@ pca_plot <- ggplot(scores, aes(x = PC1, y = PC2)) +
   scale_shape_manual(values = c("FAB" = 16, "FCEA" = 17, "GAM" = 15, "LLFS" = 3)) +
   geom_richtext(data = data.frame(x = -Inf, y = Inf, label = disp_html),
                 aes(x = x, y = y, label = label),
-                hjust = 0, vjust = 1, size = 3.2, color = "grey20",
+                hjust = 0, vjust = 1, size = 3.5, color = "grey20",
                 fill = alpha("white", 0.9), label.color = "grey50",
-                label.padding = unit(c(4, 5, 4, 5), "pt"),
+                label.padding = unit(c(5, 6, 5, 6), "pt"),
                 label.r = unit(0, "pt"),
                 family = "Helvetica", inherit.aes = FALSE) +
   labs(x = paste0("PC1 (", round(ve[1] * 100, 1), "%)"),
