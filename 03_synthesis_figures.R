@@ -236,8 +236,8 @@ pca_plot <- ggplot(scores, aes(x = PC1, y = PC2)) +
                 label.padding = unit(c(5, 6, 5, 6), "pt"),
                 label.r = unit(0, "pt"),
                 family = "Helvetica", inherit.aes = FALSE) +
-  labs(x = paste0("← Higher productivity              PC1 (", round(ve[1] * 100, 1), "%)              Canopy heterogeneity →"),
-       y = paste0("Height & carbon heterogeneity ←              PC2 (", round(ve[2] * 100, 1), "%)              → Structural uniformity"),
+  labs(x = paste0("Higher productivity ←              PC1 (", round(ve[1] * 100, 1), "%)              → Canopy heterogeneity"),
+       y = paste0("→ Height & carbon heterogeneity              PC2 (", round(ve[2] * 100, 1), "%)              Structural uniformity ←"),
        shape = "Site", tag = "b") +
   guides(
     color = guide_legend(override.aes = list(shape = 15, size = 5, alpha = 1,
