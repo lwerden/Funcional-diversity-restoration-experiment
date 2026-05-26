@@ -331,4 +331,30 @@ mm_results <- data.frame(
 write.csv(mm_results, "supp_mixed_model_robustness.csv", row.names = FALSE)
 cat("Saved: supp_mixed_model_robustness.csv\n")
 
+# ============================================================
+# G) M2-INCLUSIVE SENSITIVITY — does the trend hold if M2 is included
+# at richness = 1 alongside M1?
+# ============================================================
+richness_with_m2 <- c(
+  "M1" = 1, "M2" = 1, "2SP" = 2, "6SP" = 6, "12SP" = 12
+)[as.character(pm$Treatment)]
+bd_m2 <- betadisper(dist(pca_mat), droplevels(pm$Treatment))
+ct_m2 <- suppressWarnings(cor.test(richness_with_m2, bd_m2$distances, method = "spearman"))
+
+set.seed(42)
+obs_rho_m2 <- cor(richness_with_m2, bd_m2$distances, method = "spearman")
+perm_rhos_m2 <- replicate(n_perm,
+  cor(sample(richness_with_m2), bd_m2$distances, method = "spearman"))
+p_perm_m2 <- (sum(perm_rhos_m2 <= obs_rho_m2) + 1) / (n_perm + 1)
+
+m2_results <- data.frame(
+  Coding = c("Designed gradient (M2 excluded)", "M2-inclusive (M1 and M2 both at richness = 1)"),
+  n_plots = c(length(richness), length(richness_with_m2)),
+  rho = c(round(obs_rho, 4), round(obs_rho_m2, 4)),
+  permutation_p = c(round(p_perm, 4), round(p_perm_m2, 4))
+)
+write.csv(m2_results, "supp_m2_inclusive_sensitivity.csv", row.names = FALSE)
+cat("Saved: supp_m2_inclusive_sensitivity.csv\n")
+cat(sprintf("  M2-inclusive: rho = %.3f, perm p = %.4f\n", obs_rho_m2, p_perm_m2))
+
 cat("\nAll sensitivity analyses done.\n")
